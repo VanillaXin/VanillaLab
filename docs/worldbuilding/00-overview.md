@@ -11,20 +11,21 @@
 | 表象   | 电车、终端、魔法考试、仿生人新闻——很像「真的很和平」的现代社会       |
 | 能源   | **电**是日常语言；**衍能**是工厂里的中间环节；**源质**是战略资源 |
 | 魔法   | 古老、可考、能用，**原理未完全掌握**；转电链路长期低效          |
-| 里层   | 遗物黑市、野质交易、研究所政治                        |
+| 里层   | 遗物黑市、野质交易、体系外对共生的质疑（院所与总署总体和睦）         |
 | 与香草酱 | 植物精灵；设定不与现实品牌绑定                        |
 
 ## 设定模块索引
 
-| 文档                                                           | 主题          |
-|--------------------------------------------------------------|-------------|
-| [01-era.md](01-era.md)                                       | 源历、魔法史、社会面貌 |
-| [02-source-substance.md](02-source-substance.md)             | 源质          |
-| [03-derived-energy.md](03-derived-energy.md)                 | 衍能 → 电      |
-| [04-magic-system.md](04-magic-system.md)                     | 魔法学科与考试     |
-| [05-androids.md](05-androids.md)                             | AI 与半灵仿生人   |
-| [06-undercurrent.md](06-undercurrent.md)                     | 暗流          |
-| [07-vanilla-core-institute.md](07-vanilla-core-institute.md) | 香草芯研究所      |
+| 文档                                                           | 主题               |
+|--------------------------------------------------------------|------------------|
+| [01-era.md](01-era.md)                                       | 源历、魔法史、社会面貌      |
+| [02-source-substance.md](02-source-substance.md)             | 源质               |
+| [03-derived-energy.md](03-derived-energy.md)                 | 衍能 → 电           |
+| [04-magic-system.md](04-magic-system.md)                     | 魔法学科与考试          |
+| [05-androids.md](05-androids.md)                             | AI 与半灵仿生人        |
+| [06-undercurrent.md](06-undercurrent.md)                     | 暗流               |
+| [07-vanilla-core-institute.md](07-vanilla-core-institute.md) | **绿芯院区**（主叙事研究所） |
+| [08-vanilla-core-network.md](08-vanilla-core-network.md)     | 总署与多院所体系         |
 
 ## 修订记录
 
