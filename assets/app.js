@@ -74,6 +74,11 @@
   let pollTimer = null;
   let folderHandle = null;
   const POLL_MS = 1500;
+  const FS_DB_NAME = "banira-fs";
+  const FS_STORE = "handles";
+  const FS_KEY_CONTENT = "content-root";
+  const PICKER_ID_DIR = "banira-content-folder";
+  const PICKER_ID_INDEX = "banira-index-file";
 
   function isFileProtocol() {
     return location.protocol === "file:";
@@ -156,29 +161,140 @@
     }
   }
 
+  // region 本地文件夹句柄持久化
+  function openFsDb() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(FS_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(FS_STORE)) {
+          req.result.createObjectStore(FS_STORE);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function loadStoredFolderHandle() {
+    if (!window.indexedDB) return null;
+    try {
+      const db = await openFsDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(FS_STORE, "readonly");
+        const get = tx.objectStore(FS_STORE).get(FS_KEY_CONTENT);
+        get.onsuccess = () => resolve(get.result || null);
+        get.onerror = () => reject(get.error);
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  async function saveStoredFolderHandle(handle) {
+    if (!window.indexedDB || !handle) return;
+    try {
+      const db = await openFsDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(FS_STORE, "readwrite");
+        tx.objectStore(FS_STORE).put(handle, FS_KEY_CONTENT);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (err) {
+      console.warn("无法保存文件夹句柄", err);
+    }
+  }
+
+  async function ensureReadPermission(handle) {
+    if (!handle || !handle.queryPermission) return false;
+    const state = await handle.queryPermission({ mode: "read" });
+    if (state === "granted") return true;
+    if (state === "denied") return false;
+    const next = await handle.requestPermission({ mode: "read" });
+    return next === "granted";
+  }
+
+  async function pickIndexHtmlForStartIn() {
+    if (!window.showOpenFilePicker) return null;
+    const [handle] = await window.showOpenFilePicker({
+      id: PICKER_ID_INDEX,
+      multiple: false,
+      types: [
+        {
+          description: "HTML",
+          accept: { "text/html": [".html"] },
+        },
+      ],
+    });
+    return handle;
+  }
+
+  async function resolveDirectoryPickerStartIn() {
+    const stored = await loadStoredFolderHandle();
+    if (stored) {
+      const perm = stored.queryPermission
+        ? await stored.queryPermission({ mode: "read" })
+        : "granted";
+      if (perm !== "denied") return stored;
+    }
+    if (isFileProtocol()) {
+      return pickIndexHtmlForStartIn();
+    }
+    return undefined;
+  }
+
+  async function applyFolderHandle(picked) {
+    liveMode = "folder";
+    liveCacheClear();
+    try {
+      folderHandle = await picked.getDirectoryHandle("content");
+    } catch {
+      folderHandle = picked;
+    }
+    await saveStoredFolderHandle(folderHandle);
+    await scanFolderRecursive(folderHandle);
+    setFolderPickUi(false);
+    updateLiveBadge();
+    await navigate(currentId, true);
+    startPolling();
+  }
+
+  async function tryRestoreFolderFromStorage() {
+    if (!window.showDirectoryPicker) return false;
+    const stored = await loadStoredFolderHandle();
+    if (!stored) return false;
+    if (!(await ensureReadPermission(stored))) return false;
+    folderHandle = stored;
+    liveMode = "folder";
+    liveCacheClear();
+    await scanFolderRecursive(folderHandle);
+    setFolderPickUi(false);
+    updateLiveBadge();
+    return true;
+  }
+
   async function connectContentFolder() {
     if (!window.showDirectoryPicker) {
       alert("当前浏览器不支持选择文件夹。");
       return;
     }
     try {
-      const picked = await window.showDirectoryPicker({ mode: "read" });
-      liveMode = "folder";
-      liveCacheClear();
+      let startIn;
       try {
-        folderHandle = await picked.getDirectoryHandle("content");
-      } catch {
-        folderHandle = picked;
+        startIn = await resolveDirectoryPickerStartIn();
+      } catch (err) {
+        if (err.name === "AbortError") return;
+        throw err;
       }
-      await scanFolderRecursive(folderHandle);
-      setFolderPickUi(false);
-      updateLiveBadge();
-      await navigate(currentId, true);
-      startPolling();
+      const opts = { mode: "read", id: PICKER_ID_DIR };
+      if (startIn) opts.startIn = startIn;
+      const picked = await window.showDirectoryPicker(opts);
+      await applyFolderHandle(picked);
     } catch (err) {
       if (err.name !== "AbortError") console.error(err);
     }
   }
+  // endregion
 
   function liveCacheClear() {
     Object.keys(liveCache).forEach((k) => delete liveCache[k]);
@@ -262,7 +378,8 @@
       '<div class="connect-prompt">' +
       "<h2>请选择设定文件夹</h2>" +
       "<p>请选择包含设定的文件夹后继续。</p>" +
-      "<p>可选<strong>仓库根目录</strong>或<strong>content</strong> 目录。</p>" +
+      "<p>可选<strong>仓库根目录</strong>或 <strong>content</strong> 目录。</p>" +
+      "<p class=\"connect-prompt-hint\">首次会请先选择本站的 <code>index.html</code>，以便文件夹对话框从项目目录打开；之后将记住上次位置。</p>" +
       '<button type="button" class="connect-prompt-btn" id="connect-prompt-btn">选择文件夹</button>' +
       "</div>";
     document.getElementById("connect-prompt-btn").addEventListener("click", connectContentFolder);
@@ -806,7 +923,14 @@
       if (ok) await preloadLiveDocs();
       else showFetchFailedHint();
     } else if (isFileProtocol()) {
-      showConnectPrompt();
+      const restored = await tryRestoreFolderFromStorage();
+      if (restored) {
+        startPolling();
+        const start = (location.hash || "#home").slice(1) || "home";
+        await navigate(DOC_PATHS[start] ? start : "home");
+      } else {
+        showConnectPrompt();
+      }
       updateLiveBadge();
       window.addEventListener("hashchange", () => {
         if (needsFolderPick()) showConnectPrompt();
