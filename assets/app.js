@@ -307,6 +307,7 @@
 
   function liveCacheClear() {
     Object.keys(liveCache).forEach((k) => delete liveCache[k]);
+    invalidateSearchIndex();
   }
 
   async function tryEnableFetchLive() {
@@ -343,6 +344,7 @@
       if (fresh == null) return;
       if (liveCache[currentId] !== fresh) {
         liveCache[currentId] = fresh;
+        invalidateSearchIndex();
         renderDoc(currentId);
         flashLiveIndicator();
       }
@@ -1338,6 +1340,11 @@
   const NAV_EXPANDED_KEY = "banira-nav-expanded";
   const NAV_COLLAPSED_KEY_LEGACY = "banira-nav-collapsed";
   const SIDEBAR_COLLAPSED_KEY = "banira-sidebar-collapsed";
+  const SEARCH_HISTORY_KEY = "banira-search-history";
+  const SEARCH_HISTORY_MAX = 12;
+  const SEARCH_RESULT_MAX = 24;
+  let searchIndex = null;
+  let searchActiveIdx = -1;
 
   function stripMarkdownForSearch(body) {
     return body
@@ -1363,29 +1370,118 @@
     return { id, title, group: nav ? nav.group : "", text, bodyOnly };
   }
 
+  function invalidateSearchIndex() {
+    searchIndex = null;
+  }
+
+  function buildSearchIndex() {
+    const rows = [];
+    const ids = new Set([...ALL_IDS, ...Object.keys(liveCache)]);
+    ids.forEach((id) => {
+      if (!DOC_PATHS[id] && !liveCache[id]) return;
+      rows.push(getDocSearchRecord(id));
+    });
+    searchIndex = rows;
+  }
+
+  function ensureSearchIndex() {
+    if (!searchIndex) buildSearchIndex();
+    return searchIndex;
+  }
+
+  function loadSearchHistory() {
+    try {
+      const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(list)) return [];
+      return list.filter((x) => typeof x === "string" && x.trim()).slice(0, SEARCH_HISTORY_MAX);
+    } catch {
+      return [];
+    }
+  }
+
+  function saveSearchHistory(query) {
+    const q = query.trim();
+    if (!q) return;
+    const list = loadSearchHistory().filter((x) => x !== q);
+    list.unshift(q);
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(list.slice(0, SEARCH_HISTORY_MAX)));
+  }
+
+  function clearSearchHistory() {
+    localStorage.removeItem(SEARCH_HISTORY_KEY);
+  }
+
   function searchDocs(query) {
     const q = query.trim().toLowerCase();
     if (!q || needsFolderPick()) return [];
     const terms = q.split(/\s+/).filter(Boolean);
-    const ids = new Set([...ALL_IDS, ...Object.keys(liveCache)]);
+    const index = ensureSearchIndex();
     const scored = [];
-    ids.forEach((id) => {
-      if (!DOC_PATHS[id] && !liveCache[id]) return;
-      const rec = getDocSearchRecord(id);
+    index.forEach((rec) => {
+      const id = rec.id;
       const titleLower = rec.title.toLowerCase();
       const labelLower = (NAV_META[id] ? NAV_META[id].label : "").toLowerCase();
-      if (!terms.every((t) => rec.text.includes(t) || id.toLowerCase().includes(t))) return;
+      const idLower = id.toLowerCase();
+      const matchAllTerms = terms.every((t) => rec.text.includes(t) || idLower.includes(t));
+      const matchPhrase = rec.text.includes(q) || idLower.includes(q) || titleLower.includes(q);
+      if (!matchAllTerms && !matchPhrase) return;
       let score = 0;
+      if (titleLower === q || labelLower === q) score += 300;
+      if (matchPhrase) score += 120;
+      if (terms.every((t) => titleLower.includes(t))) score += 80;
       terms.forEach((t) => {
-        if (titleLower.includes(t)) score += 100;
-        if (labelLower.includes(t)) score += 80;
-        if (id.toLowerCase().includes(t)) score += 60;
-        if (rec.bodyOnly.includes(t)) score += 10;
+        if (titleLower.startsWith(t)) score += 90;
+        else if (titleLower.includes(t)) score += 70;
+        if (labelLower.startsWith(t)) score += 65;
+        else if (labelLower.includes(t)) score += 50;
+        if (idLower.includes(t)) score += 45;
+        if (rec.bodyOnly.includes(t)) score += 12;
       });
       scored.push({ ...rec, score });
     });
     scored.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, "zh"));
-    return scored.slice(0, 16);
+    return scored.slice(0, SEARCH_RESULT_MAX);
+  }
+
+  function highlightSearchText(text, query) {
+    const terms = [
+      query.trim().toLowerCase(),
+      ...query
+        .trim()
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean),
+    ]
+      .filter((t, i, arr) => t && arr.indexOf(t) === i)
+      .sort((a, b) => b.length - a.length);
+    if (!terms.length || !text) return escapeHtml(text);
+    let parts = [{ text: text, hit: false }];
+    terms.forEach((term) => {
+      const next = [];
+      parts.forEach((part) => {
+        if (part.hit) {
+          next.push(part);
+          return;
+        }
+        const lower = part.text.toLowerCase();
+        let i = 0;
+        while (i < part.text.length) {
+          const idx = lower.indexOf(term, i);
+          if (idx < 0) {
+            next.push({ text: part.text.slice(i), hit: false });
+            break;
+          }
+          if (idx > i) next.push({ text: part.text.slice(i, idx), hit: false });
+          next.push({ text: part.text.slice(idx, idx + term.length), hit: true });
+          i = idx + term.length;
+        }
+      });
+      parts = next;
+    });
+    return parts
+      .map((p) => (p.hit ? '<mark class="search-hit">' + escapeHtml(p.text) + "</mark>" : escapeHtml(p.text)))
+      .join("");
   }
 
   function makeSearchSnippet(bodyOnly, query) {
@@ -1414,10 +1510,13 @@
     const input = document.getElementById("doc-search");
     if (!input) return;
     input.disabled = !enabled;
-    input.placeholder = enabled ? "搜索设定…" : "连接后可搜索";
+    input.placeholder = enabled ? "搜索设定…（Ctrl+K）" : "连接后可搜索";
     if (!enabled) {
       input.value = "";
       hideSearchResults();
+      invalidateSearchIndex();
+    } else {
+      buildSearchIndex();
     }
   }
 
@@ -1426,31 +1525,128 @@
     const input = document.getElementById("doc-search");
     if (panel) panel.hidden = true;
     if (input) input.setAttribute("aria-expanded", "false");
+    searchActiveIdx = -1;
   }
 
-  function renderSearchResults(results, query) {
+  function getSearchPanelItems() {
     const panel = document.getElementById("search-results");
-    const input = document.getElementById("doc-search");
-    if (!panel || !input) return;
-    if (!results.length) {
-      panel.innerHTML = '<div class="search-results-empty">无匹配结果</div>';
-      panel.hidden = false;
-      input.setAttribute("aria-expanded", "true");
+    if (!panel) return [];
+    return Array.from(panel.querySelectorAll(".search-result-item"));
+  }
+
+  function setSearchActiveIndex(idx) {
+    const items = getSearchPanelItems();
+    searchActiveIdx = idx;
+    items.forEach((btn, i) => {
+      const on = i === idx;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    if (idx >= 0 && items[idx]) items[idx].scrollIntoView({ block: "nearest" });
+  }
+
+  function historyQueryFromBtn(btn) {
+    const text = btn.querySelector(".search-history-text");
+    return (text ? text.textContent : btn.getAttribute("data-query") || "").trim();
+  }
+
+  function applySearchQuery(input, query) {
+    const q = query.trim();
+    input.value = q;
+    searchActiveIdx = -1;
+    if (!q) {
+      renderSearchHistoryPanel(input);
       return;
     }
-    panel.innerHTML = results
+    renderSearchResults(searchDocs(q), q, input);
+  }
+
+  function bindSearchPanelItems(input) {
+    const panel = document.getElementById("search-results");
+    if (!panel || !input) return;
+    panel.querySelectorAll(".search-result-item[data-id]").forEach((btn) => {
+      btn.addEventListener("mousedown", (e) => e.stopPropagation());
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute("data-id");
+        const q = input.value.trim();
+        if (q) saveSearchHistory(q);
+        hideSearchResults();
+        navigate(id);
+      });
+    });
+    panel.querySelectorAll(".search-history-item").forEach((btn) => {
+      btn.addEventListener("mousedown", (e) => e.stopPropagation());
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        applySearchQuery(input, historyQueryFromBtn(btn));
+        input.focus();
+      });
+    });
+    const clearBtn = panel.querySelector(".search-history-clear");
+    if (clearBtn) {
+      clearBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+      clearBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        clearSearchHistory();
+        renderSearchHistoryPanel(input);
+      });
+    }
+    setSearchActiveIndex(searchActiveIdx >= 0 ? searchActiveIdx : -1);
+  }
+
+  function showSearchPanel(html, input) {
+    const panel = document.getElementById("search-results");
+    if (!panel || !input) return;
+    panel.innerHTML = html;
+    panel.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    bindSearchPanelItems(input);
+  }
+
+  function renderSearchHistoryPanel(input) {
+    const history = loadSearchHistory();
+    if (!history.length) {
+      showSearchPanel('<div class="search-results-empty">暂无搜索记录</div>', input);
+      return;
+    }
+    let html =
+      '<div class="search-history-bar">' +
+      '<span class="search-history-label">最近搜索</span>' +
+      '<button type="button" class="search-history-clear">清空</button>' +
+      "</div>";
+    html += history
+      .map(
+        (q) =>
+          '<button type="button" class="search-result-item search-history-item" role="option">' +
+          '<span class="search-history-text">' +
+          escapeHtml(q) +
+          "</span></button>"
+      )
+      .join("");
+    showSearchPanel(html, input);
+    setSearchActiveIndex(-1);
+  }
+
+  function renderSearchResults(results, query, input) {
+    if (!results.length) {
+      showSearchPanel('<div class="search-results-empty">无匹配结果</div>', input);
+      return;
+    }
+    const html = results
       .map((r) => {
         const snippet = makeSearchSnippet(r.bodyOnly, query);
         const meta = r.group ? '<span class="search-result-group">' + escapeHtml(r.group) + "</span>" : "";
         const sn = snippet
-          ? '<span class="search-result-snippet">' + escapeHtml(snippet) + "</span>"
+          ? '<span class="search-result-snippet">' + highlightSearchText(snippet, query) + "</span>"
           : "";
         return (
           '<button type="button" class="search-result-item" role="option" data-id="' +
           escapeHtml(r.id) +
           '">' +
           '<span class="search-result-title">' +
-          escapeHtml(r.title) +
+          highlightSearchText(r.title, query) +
           "</span>" +
           meta +
           sn +
@@ -1458,16 +1654,29 @@
         );
       })
       .join("");
-    panel.hidden = false;
-    input.setAttribute("aria-expanded", "true");
-    panel.querySelectorAll(".search-result-item").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-id");
-        hideSearchResults();
-        input.value = "";
-        navigate(id);
-      });
-    });
+    showSearchPanel(html, input);
+    setSearchActiveIndex(0);
+  }
+
+  function updateSearchDropdown(input) {
+    applySearchQuery(input, input.value);
+  }
+
+  function activateSearchSelection(input) {
+    const items = getSearchPanelItems();
+    if (!items.length) return;
+    const idx = searchActiveIdx >= 0 ? searchActiveIdx : 0;
+    const btn = items[idx];
+    if (btn.classList.contains("search-history-item")) {
+      applySearchQuery(input, historyQueryFromBtn(btn));
+      input.focus();
+      return;
+    }
+    const id = btn.getAttribute("data-id");
+    const q = input.value.trim();
+    if (q) saveSearchHistory(q);
+    hideSearchResults();
+    if (id) navigate(id);
   }
 
   function setupSearch() {
@@ -1476,33 +1685,64 @@
     if (!input || !panel) return;
     let debounceTimer = null;
     const run = () => {
-      const q = input.value;
-      if (!q.trim()) {
-        hideSearchResults();
-        return;
-      }
-      renderSearchResults(searchDocs(q), q);
+      searchActiveIdx = -1;
+      updateSearchDropdown(input);
     };
     input.addEventListener("input", () => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(run, 180);
+      debounceTimer = setTimeout(run, 150);
     });
     input.addEventListener("focus", () => {
-      if (input.value.trim()) run();
+      if (input.disabled) return;
+      run();
     });
     input.addEventListener("keydown", (e) => {
+      const items = getSearchPanelItems();
       if (e.key === "Escape") {
         hideSearchResults();
         input.blur();
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (!panel.hidden && items.length) {
+          setSearchActiveIndex(Math.min(searchActiveIdx + 1, items.length - 1));
+        }
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (!panel.hidden && items.length) {
+          setSearchActiveIndex(Math.max(searchActiveIdx - 1, 0));
+        }
+        return;
+      }
+      if (e.key === "Enter") {
+        if (panel.hidden) return;
+        e.preventDefault();
+        const q = input.value.trim();
+        if (items.length) {
+          activateSearchSelection(input);
+          return;
+        }
+        if (q) {
+          saveSearchHistory(q);
+          const results = searchDocs(q);
+          if (results.length) navigate(results[0].id);
+        }
       }
     });
-    document.addEventListener("click", (e) => {
+    panel.addEventListener("mousedown", (e) => e.stopPropagation());
+    document.addEventListener("mousedown", (e) => {
       if (!e.target.closest(".toolbar-search-wrap")) hideSearchResults();
     });
     document.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
-        if (!input.disabled) input.focus();
+        if (!input.disabled) {
+          input.focus();
+          run();
+        }
       }
     });
   }
@@ -1702,6 +1942,7 @@
       if (ok) {
         await preloadLiveDocs();
         setSearchEnabled(true);
+        buildSearchIndex();
       } else showFetchFailedHint();
     } else if (isFileProtocol()) {
       const restored = await tryRestoreFolderFromStorage();
