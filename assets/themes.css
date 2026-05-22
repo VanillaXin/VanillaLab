@@ -24,6 +24,13 @@
   --warn-text: #9e4a4a;
   --toolbar-glow: rgba(255, 182, 210, 0.35);
   --sidebar-shadow: 1px 0 0 var(--sidebar-border), 4px 0 20px rgba(212, 86, 122, 0.06);
+  --scrollbar-thumb: rgba(212, 86, 122, 0.1);
+  --scrollbar-thumb-hover: rgba(212, 86, 122, 0.34);
+  --scrollbar-thumb-active: rgba(212, 86, 122, 0.5);
+  --scrollbar-sidebar-thumb: rgba(212, 86, 122, 0.08);
+  --scrollbar-sidebar-thumb-hover: rgba(212, 86, 122, 0.3);
+  --scrollbar-code-thumb: rgba(252, 232, 239, 0.12);
+  --scrollbar-code-thumb-hover: rgba(252, 210, 222, 0.38);
 }
 
 :root[data-season="spring"][data-night-mode="dark"] {
@@ -50,6 +57,13 @@
   --warn-bg: #3d2428;
   --warn-text: #f0b0b8;
   --toolbar-glow: rgba(232, 120, 152, 0.15);
+  --scrollbar-thumb: rgba(232, 120, 152, 0.1);
+  --scrollbar-thumb-hover: rgba(232, 120, 152, 0.36);
+  --scrollbar-thumb-active: rgba(232, 120, 152, 0.52);
+  --scrollbar-sidebar-thumb: rgba(232, 120, 152, 0.08);
+  --scrollbar-sidebar-thumb-hover: rgba(232, 120, 152, 0.32);
+  --scrollbar-code-thumb: rgba(245, 220, 230, 0.1);
+  --scrollbar-code-thumb-hover: rgba(240, 160, 184, 0.4);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -77,6 +91,13 @@
     --warn-bg: #3d2428;
     --warn-text: #f0b0b8;
     --toolbar-glow: rgba(232, 120, 152, 0.15);
+    --scrollbar-thumb: rgba(232, 120, 152, 0.1);
+    --scrollbar-thumb-hover: rgba(232, 120, 152, 0.36);
+    --scrollbar-thumb-active: rgba(232, 120, 152, 0.52);
+    --scrollbar-sidebar-thumb: rgba(232, 120, 152, 0.08);
+    --scrollbar-sidebar-thumb-hover: rgba(232, 120, 152, 0.32);
+    --scrollbar-code-thumb: rgba(245, 220, 230, 0.1);
+    --scrollbar-code-thumb-hover: rgba(240, 160, 184, 0.4);
   }
 }
 /* endregion 春季 */
@@ -107,6 +128,13 @@
   --warn-text: #8a6020;
   --toolbar-glow: rgba(120, 200, 150, 0.35);
   --sidebar-shadow: 1px 0 0 var(--sidebar-border), 4px 0 20px rgba(45, 138, 82, 0.06);
+  --scrollbar-thumb: rgba(45, 138, 82, 0.1);
+  --scrollbar-thumb-hover: rgba(45, 138, 82, 0.34);
+  --scrollbar-thumb-active: rgba(45, 138, 82, 0.5);
+  --scrollbar-sidebar-thumb: rgba(45, 138, 82, 0.08);
+  --scrollbar-sidebar-thumb-hover: rgba(45, 138, 82, 0.3);
+  --scrollbar-code-thumb: rgba(232, 245, 235, 0.12);
+  --scrollbar-code-thumb-hover: rgba(180, 220, 195, 0.38);
 }
 
 :root[data-season="summer"][data-night-mode="dark"] {
@@ -132,6 +160,13 @@
   --warn-bg: #2a2818;
   --warn-text: #e8d090;
   --toolbar-glow: rgba(76, 184, 112, 0.15);
+  --scrollbar-thumb: rgba(76, 184, 112, 0.1);
+  --scrollbar-thumb-hover: rgba(76, 184, 112, 0.36);
+  --scrollbar-thumb-active: rgba(76, 184, 112, 0.52);
+  --scrollbar-sidebar-thumb: rgba(76, 184, 112, 0.08);
+  --scrollbar-sidebar-thumb-hover: rgba(76, 184, 112, 0.32);
+  --scrollbar-code-thumb: rgba(220, 235, 224, 0.1);
+  --scrollbar-code-thumb-hover: rgba(140, 210, 168, 0.4);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -158,6 +193,13 @@
     --warn-bg: #2a2818;
     --warn-text: #e8d090;
     --toolbar-glow: rgba(76, 184, 112, 0.15);
+    --scrollbar-thumb: rgba(76, 184, 112, 0.1);
+    --scrollbar-thumb-hover: rgba(76, 184, 112, 0.36);
+    --scrollbar-thumb-active: rgba(76, 184, 112, 0.52);
+    --scrollbar-sidebar-thumb: rgba(76, 184, 112, 0.08);
+    --scrollbar-sidebar-thumb-hover: rgba(76, 184, 112, 0.32);
+    --scrollbar-code-thumb: rgba(220, 235, 224, 0.1);
+    --scrollbar-code-thumb-hover: rgba(140, 210, 168, 0.4);
   }
 }
 /* endregion 夏季 */
@@ -188,6 +230,13 @@
   --warn-text: #8a4a18;
   --toolbar-glow: rgba(240, 180, 120, 0.4);
   --sidebar-shadow: 1px 0 0 var(--sidebar-border), 4px 0 20px rgba(200, 106, 40, 0.06);
+  --scrollbar-thumb: rgba(200, 106, 40, 0.1);
+  --scrollbar-thumb-hover: rgba(200, 106, 40, 0.34);
+  --scrollbar-thumb-active: rgba(200, 106, 40, 0.5);
+  --scrollbar-sidebar-thumb: rgba(200, 106, 40, 0.08);
+  --scrollbar-sidebar-thumb-hover: rgba(200, 106, 40, 0.3);
+  --scrollbar-code-thumb: rgba(248, 236, 224, 0.12);
+  --scrollbar-code-thumb-hover: rgba(240, 200, 160, 0.38);
 }
 
 :root[data-season="autumn"][data-night-mode="dark"] {
@@ -213,6 +262,13 @@
   --warn-bg: #3d2818;
   --warn-text: #f0c890;
   --toolbar-glow: rgba(232, 144, 72, 0.15);
+  --scrollbar-thumb: rgba(232, 144, 72, 0.1);
+  --scrollbar-thumb-hover: rgba(232, 144, 72, 0.36);
+  --scrollbar-thumb-active: rgba(232, 144, 72, 0.52);
+  --scrollbar-sidebar-thumb: rgba(232, 144, 72, 0.08);
+  --scrollbar-sidebar-thumb-hover: rgba(232, 144, 72, 0.32);
+  --scrollbar-code-thumb: rgba(245, 232, 220, 0.1);
+  --scrollbar-code-thumb-hover: rgba(240, 180, 120, 0.4);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -239,6 +295,13 @@
     --warn-bg: #3d2818;
     --warn-text: #f0c890;
     --toolbar-glow: rgba(232, 144, 72, 0.15);
+    --scrollbar-thumb: rgba(232, 144, 72, 0.1);
+    --scrollbar-thumb-hover: rgba(232, 144, 72, 0.36);
+    --scrollbar-thumb-active: rgba(232, 144, 72, 0.52);
+    --scrollbar-sidebar-thumb: rgba(232, 144, 72, 0.08);
+    --scrollbar-sidebar-thumb-hover: rgba(232, 144, 72, 0.32);
+    --scrollbar-code-thumb: rgba(245, 232, 220, 0.1);
+    --scrollbar-code-thumb-hover: rgba(240, 180, 120, 0.4);
   }
 }
 /* endregion 秋季 */
@@ -269,6 +332,13 @@
   --warn-text: #4a6080;
   --toolbar-glow: rgba(180, 210, 240, 0.45);
   --sidebar-shadow: 1px 0 0 var(--sidebar-border), 4px 0 20px rgba(74, 122, 176, 0.06);
+  --scrollbar-thumb: rgba(74, 122, 176, 0.1);
+  --scrollbar-thumb-hover: rgba(74, 122, 176, 0.34);
+  --scrollbar-thumb-active: rgba(74, 122, 176, 0.5);
+  --scrollbar-sidebar-thumb: rgba(74, 122, 176, 0.08);
+  --scrollbar-sidebar-thumb-hover: rgba(74, 122, 176, 0.3);
+  --scrollbar-code-thumb: rgba(232, 240, 248, 0.12);
+  --scrollbar-code-thumb-hover: rgba(180, 210, 240, 0.38);
 }
 
 :root[data-season="winter"][data-night-mode="dark"] {
@@ -294,6 +364,13 @@
   --warn-bg: #1e2838;
   --warn-text: #b0c8e0;
   --toolbar-glow: rgba(104, 160, 216, 0.15);
+  --scrollbar-thumb: rgba(104, 160, 216, 0.1);
+  --scrollbar-thumb-hover: rgba(104, 160, 216, 0.36);
+  --scrollbar-thumb-active: rgba(104, 160, 216, 0.52);
+  --scrollbar-sidebar-thumb: rgba(104, 160, 216, 0.08);
+  --scrollbar-sidebar-thumb-hover: rgba(104, 160, 216, 0.32);
+  --scrollbar-code-thumb: rgba(220, 232, 244, 0.1);
+  --scrollbar-code-thumb-hover: rgba(144, 192, 240, 0.4);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -320,6 +397,13 @@
     --warn-bg: #1e2838;
     --warn-text: #b0c8e0;
     --toolbar-glow: rgba(104, 160, 216, 0.15);
+    --scrollbar-thumb: rgba(104, 160, 216, 0.1);
+    --scrollbar-thumb-hover: rgba(104, 160, 216, 0.36);
+    --scrollbar-thumb-active: rgba(104, 160, 216, 0.52);
+    --scrollbar-sidebar-thumb: rgba(104, 160, 216, 0.08);
+    --scrollbar-sidebar-thumb-hover: rgba(104, 160, 216, 0.32);
+    --scrollbar-code-thumb: rgba(220, 232, 244, 0.1);
+    --scrollbar-code-thumb-hover: rgba(144, 192, 240, 0.4);
   }
 }
 /* endregion 冬季 */

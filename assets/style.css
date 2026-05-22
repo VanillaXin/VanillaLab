@@ -2,6 +2,16 @@
   --radius: 12px;
   --font: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
   --font-serif: "Georgia", "SimSun", serif;
+  --scrollbar-size: 7px;
+  --scrollbar-size-thin: 5px;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(120, 120, 128, 0.1);
+  --scrollbar-thumb-hover: rgba(120, 120, 128, 0.28);
+  --scrollbar-thumb-active: rgba(120, 120, 128, 0.42);
+  --scrollbar-sidebar-thumb: rgba(120, 120, 128, 0.08);
+  --scrollbar-sidebar-thumb-hover: rgba(120, 120, 128, 0.26);
+  --scrollbar-code-thumb: rgba(200, 200, 210, 0.12);
+  --scrollbar-code-thumb-hover: rgba(200, 200, 210, 0.35);
   transition:
     background-color 0.25s ease,
     color 0.2s ease,
@@ -29,6 +39,116 @@ body {
   background-image: linear-gradient(165deg, var(--bg-subtle) 0%, var(--bg) 42%, var(--bg) 100%);
   background-attachment: fixed;
 }
+
+/* region 滚动条 */
+.nav-scroll,
+.content-wrap,
+.search-results,
+.article pre,
+.pedigree {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.nav-scroll {
+  scrollbar-color: var(--scrollbar-sidebar-thumb) var(--scrollbar-track);
+}
+
+.nav-scroll::-webkit-scrollbar,
+.content-wrap::-webkit-scrollbar,
+.search-results::-webkit-scrollbar,
+.article pre::-webkit-scrollbar,
+.pedigree::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+.nav-scroll::-webkit-scrollbar {
+  width: var(--scrollbar-size-thin);
+}
+
+.article pre::-webkit-scrollbar,
+.pedigree::-webkit-scrollbar {
+  height: var(--scrollbar-size-thin);
+}
+
+.nav-scroll::-webkit-scrollbar-track,
+.content-wrap::-webkit-scrollbar-track,
+.search-results::-webkit-scrollbar-track,
+.article pre::-webkit-scrollbar-track,
+.pedigree::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 99px;
+}
+
+.nav-scroll::-webkit-scrollbar-thumb,
+.content-wrap::-webkit-scrollbar-thumb,
+.search-results::-webkit-scrollbar-thumb,
+.article pre::-webkit-scrollbar-thumb,
+.pedigree::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.22s ease;
+}
+
+.article pre {
+  scrollbar-color: var(--scrollbar-code-thumb) var(--scrollbar-track);
+}
+
+.article pre::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-code-thumb);
+  background-clip: padding-box;
+}
+
+.article pre::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-code-thumb-hover);
+  background-clip: padding-box;
+}
+
+.article pre::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-active);
+  background-clip: padding-box;
+}
+
+.nav-scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-sidebar-thumb);
+  background-clip: padding-box;
+}
+
+.nav-scroll::-webkit-scrollbar-thumb:hover,
+.content-wrap::-webkit-scrollbar-thumb:hover,
+.search-results::-webkit-scrollbar-thumb:hover,
+.article pre::-webkit-scrollbar-thumb:hover,
+.pedigree::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+.nav-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-sidebar-thumb-hover);
+  background-clip: padding-box;
+}
+
+.nav-scroll::-webkit-scrollbar-thumb:active,
+.content-wrap::-webkit-scrollbar-thumb:active,
+.search-results::-webkit-scrollbar-thumb:active,
+.article pre::-webkit-scrollbar-thumb:active,
+.pedigree::-webkit-scrollbar-thumb:active {
+  background: var(--scrollbar-thumb-active);
+  background-clip: padding-box;
+}
+
+.nav-scroll::-webkit-scrollbar-thumb:active {
+  background: var(--accent);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+/* endregion 滚动条 */
 
 .app {
   display: flex;
@@ -117,15 +237,6 @@ body.sidebar-collapsed .sidebar-expand-btn {
   flex: 1;
   overflow-y: auto;
   padding: 0.5rem 0 1rem;
-}
-
-.nav-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.nav-scroll::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb, rgba(128, 128, 128, 0.25));
-  border-radius: 3px;
 }
 
 .nav-group {
