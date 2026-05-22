@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-Hans" data-season="spring" data-night-mode="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>香草芯 · 设定浏览</title>
+  <script>
+    (function () {
+      var s = localStorage.getItem("banira-season") || "spring";
+      var n = localStorage.getItem("banira-night-mode") || "auto";
+      document.documentElement.setAttribute("data-season", s);
+      document.documentElement.setAttribute("data-night-mode", n);
+    })();
+  </script>
+  <link rel="stylesheet" href="assets/themes.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/theme.js"></script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <h1>香草芯</h1>
+        <p>Vanilla Xin · 设定库</p>
+      </div>
+      <nav class="nav-scroll" id="nav-root" aria-label="设定导航"></nav>
+    </aside>
+    <main class="main">
+      <header class="toolbar">
+        <button type="button" class="menu-toggle" id="menu-toggle" aria-label="打开菜单">☰</button>
+        <h2 id="page-title">加载中…</h2>
+        <div class="toolbar-actions">
+          <span class="live-badge" id="live-badge"></span>
+          <button type="button" class="theme-trigger" id="theme-trigger" aria-haspopup="dialog" aria-controls="theme-modal">主题</button>
+        </div>
+      </header>
+      <div class="content-wrap">
+        <article class="article" id="article"></article>
+      </div>
+    </main>
+  </div>
+
+  <div class="theme-modal" id="theme-modal" hidden>
+    <div class="theme-modal__backdrop" id="theme-modal-backdrop"></div>
+    <div class="theme-modal__panel" role="dialog" aria-modal="true" aria-labelledby="theme-modal-title">
+      <header class="theme-modal__header">
+        <h3 id="theme-modal-title">主题</h3>
+        <button type="button" class="theme-modal__close" id="theme-modal-close" aria-label="关闭">×</button>
+      </header>
+      <section class="theme-modal__section">
+        <span class="theme-modal__label">季节</span>
+        <div class="season-picker" id="season-picker" role="group" aria-label="季节主题"></div>
+      </section>
+      <section class="theme-modal__section">
+        <span class="theme-modal__label">外观</span>
+        <div class="appearance-picker" id="appearance-picker" role="group" aria-label="外观模式">
+          <button type="button" class="appearance-btn" data-night="auto">自动</button>
+          <button type="button" class="appearance-btn" data-night="light">浅色</button>
+          <button type="button" class="appearance-btn" data-night="dark">深色</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="assets/app.js" defer></script>
+</body>
+</html>

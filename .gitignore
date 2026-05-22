@@ -15,4 +15,8 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 .vscode/
-.cursor/
+.cursor/*
+!.cursor/rules/
+
+### 本地工具 ###
+scripts/

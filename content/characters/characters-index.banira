@@ -1,4 +1,8 @@
-﻿# 香草酱 · 角色索引
+---
+group: characters
+id: characters-index
+title: 香草酱 · 角色索引
+---
 
 ## 称呼体系
 
@@ -13,7 +17,7 @@
 | **姓名**    | 公民正式名，**另起、待定** | —          |
 
 研究所人类已换过数代职员，与香草酱**朋友式相处**
-；见 [07-vanilla-core-institute.md](../worldbuilding/07-vanilla-core-institute.md)。
+；见 [[07-vanilla-core-institute|07-vanilla-core-institute.md]]。
 
 ## 年龄说明（源历 80 年）
 
@@ -48,13 +52,13 @@
 
 | 代号 | 所内简称 | 候选姓名    | 核心关键词 | 详情                                             |
 |----|------|---------|-------|------------------------------------------------|
-| 香草 | 芯酱   | 温芯 / 梵芯 | 妈妈、领袖 | [vanilla-progenitor.md](vanilla-progenitor.md) |
-| 黑茶 | 黑茶酱  | 玄默 / 墨苓 | 沉厚、难测 | [vanilla-black-tea.md](vanilla-black-tea.md)   |
-| 红茶 | 红茶酱  | 暮暖 / 丹叶 | 热忱、门面 | [vanilla-red-tea.md](vanilla-red-tea.md)       |
-| 青茶 | 青茶酱  | 青霭 / 岚岫 | 分寸、协调 | [vanilla-oolong-tea.md](vanilla-oolong-tea.md) |
-| 黄茶 | 黄茶酱  | 缃宁 / 秋禾 | 疏朗、档案 | [vanilla-yellow-tea.md](vanilla-yellow-tea.md) |
-| 白茶 | 白茶酱  | 素霏 / 银芽 | 清冽、愈护 | [vanilla-white-tea.md](vanilla-white-tea.md)   |
-| 绿茶 | 绿茶酱  | 碧涟 / 清越 | 鲜朗、机巧 | [vanilla-green-tea.md](vanilla-green-tea.md)   |
+| 香草 | 芯酱   | 温芯 / 梵芯 | 妈妈、领袖 | [[vanilla-progenitor|芯酱]] |
+| 黑茶 | 黑茶酱  | 玄默 / 墨苓 | 沉厚、难测 | [[vanilla-dark-tea|黑茶酱]] |
+| 红茶 | 红茶酱  | 暮暖 / 丹叶 | 热忱、门面 | [[vanilla-black-tea|红茶酱]] |
+| 青茶 | 青茶酱  | 青霭 / 岚岫 | 分寸、协调 | [[vanilla-oolong-tea|青茶酱]] |
+| 黄茶 | 黄茶酱  | 缃宁 / 秋禾 | 疏朗、档案 | [[vanilla-yellow-tea|黄茶酱]] |
+| 白茶 | 白茶酱  | 素霏 / 银芽 | 清冽、愈护 | [[vanilla-white-tea|白茶酱]] |
+| 绿茶 | 绿茶酱  | 碧涟 / 清越 | 鲜朗、机巧 | [[vanilla-green-tea|绿茶酱]] |
 
 ## 关系网（概要）
 

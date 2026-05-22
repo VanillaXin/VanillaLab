@@ -1,13 +1,9 @@
-﻿# 项目记忆 · 香草芯 (Vanilla Xin)
+---
+id: memory
+title: 项目记忆 · 香草芯 (Vanilla Xin)
+---
 
-> 协作用浓缩记忆。详细设定见 `content/`；浏览器打开 `index.html` 浏览。
-
-## 茶系文件 slug
-
-| 中文 | slug |
-|------|------|
-| 红茶 | `vanilla-black-tea`（英文 black tea，勿用 red） |
-| 黑茶 | `vanilla-dark-tea`（勿用 black 指黑茶） |
+> 协作用浓缩记忆。详细设定见 `docs/`。
 
 ## 品牌与称呼
 
@@ -69,7 +65,7 @@
 
 ## 暗线（框架）
 
-种子来源、遗物、野质、反共生 — `docs/worldbuilding/06-undercurrent.md`
+种子来源、遗物、野质、反共生 — [[06-undercurrent]]
 
 ## 修订记录
 
