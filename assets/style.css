@@ -782,6 +782,21 @@ body.theme-modal-open {
   border: 1px solid var(--border);
 }
 
+.article hr {
+  margin: 1.75rem 0;
+  border: none;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--border) 12%,
+    var(--accent-soft) 50%,
+    var(--border) 88%,
+    transparent 100%
+  );
+  opacity: 0.85;
+}
+
 .article h2 {
   margin: 1.85rem 0 0.8rem;
   font-size: 1.28rem;

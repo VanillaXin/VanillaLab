@@ -434,6 +434,43 @@
     return s;
   }
 
+  function splitTableCells(row) {
+    const inner = row.trim().replace(/^\|/, "").replace(/\|$/, "");
+    const cells = [];
+    let current = "";
+    let inWiki = false;
+    for (let j = 0; j < inner.length; j++) {
+      const ch = inner[j];
+      if (!inWiki && ch === "[" && inner[j + 1] === "[") {
+        inWiki = true;
+        current += "[[";
+        j++;
+        continue;
+      }
+      if (inWiki) {
+        current += ch;
+        if (ch === "]" && inner[j + 1] === "]") {
+          current += "]";
+          j++;
+          inWiki = false;
+        }
+        continue;
+      }
+      if (ch === "|") {
+        cells.push(current.trim());
+        current = "";
+        continue;
+      }
+      current += ch;
+    }
+    cells.push(current.trim());
+    return cells;
+  }
+
+  function isHorizontalRule(line) {
+    return /^ {0,3}(-{3,}|\*{3,}|_{3,})\s*$/.test(line.trim());
+  }
+
   function parsePedigreeFields(text) {
     const parts = text.split("|").map((p) => p.trim());
     return {
@@ -753,13 +790,8 @@
           i++;
         }
         if (tableRows.length >= 2) {
-          const parseRow = (r) =>
-            r
-              .slice(1, -1)
-              .split("|")
-              .map((c) => c.trim());
-          const header = parseRow(tableRows[0]);
-          const bodyRows = tableRows.slice(2).map(parseRow);
+          const header = splitTableCells(tableRows[0]);
+          const bodyRows = tableRows.slice(2).map(splitTableCells);
           let tbl = "<table><thead><tr>";
           header.forEach((h) => {
             tbl += "<th>" + inlineFormat(h) + "</th>";
@@ -803,6 +835,12 @@
           i++;
         }
         out.push("</ul>");
+        continue;
+      }
+
+      if (isHorizontalRule(line)) {
+        out.push("<hr />");
+        i++;
         continue;
       }
 
