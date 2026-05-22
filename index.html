@@ -20,15 +20,27 @@
   <div class="app">
     <aside class="sidebar" id="sidebar">
       <div class="brand">
-        <h1>香草芯</h1>
-        <p>Vanilla Xin · 设定库</p>
+        <div class="brand-row">
+          <div class="brand-text">
+            <h1>香草芯</h1>
+            <p>Vanilla Xin · 设定库</p>
+          </div>
+          <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-btn" aria-label="折叠侧栏" aria-expanded="true" title="折叠侧栏">‹</button>
+        </div>
       </div>
       <nav class="nav-scroll" id="nav-root" aria-label="设定导航"></nav>
     </aside>
     <main class="main">
       <header class="toolbar">
-        <button type="button" class="menu-toggle" id="menu-toggle" aria-label="打开菜单">☰</button>
-        <h2 id="page-title">加载中…</h2>
+        <div class="toolbar-start">
+          <button type="button" class="sidebar-expand-btn" id="sidebar-expand-btn" aria-label="展开侧栏" title="展开侧栏" hidden>›</button>
+          <button type="button" class="menu-toggle" id="menu-toggle" aria-label="打开菜单">☰</button>
+          <h2 id="page-title">加载中…</h2>
+        </div>
+        <div class="toolbar-search-wrap">
+          <input type="search" id="doc-search" class="doc-search-input" placeholder="搜索设定…（Ctrl+K）" autocomplete="off" disabled aria-controls="search-results" aria-expanded="false" />
+          <div class="search-results" id="search-results" role="listbox" hidden></div>
+        </div>
         <div class="toolbar-actions">
           <span class="live-badge" id="live-badge"></span>
           <button type="button" class="theme-trigger" id="theme-trigger" aria-haspopup="dialog" aria-controls="theme-modal">主题</button>

@@ -68,6 +68,13 @@
     });
   });
 
+  const NAV_META = Object.create(null);
+  NAV.forEach((section) => {
+    section.items.forEach((item) => {
+      NAV_META[item.id] = { label: item.label, group: section.group };
+    });
+  });
+
   const liveCache = Object.create(null);
   let liveMode = null;
   let currentId = "home";
@@ -255,6 +262,7 @@
     await scanFolderRecursive(folderHandle);
     setFolderPickUi(false);
     updateLiveBadge();
+    setSearchEnabled(true);
     await navigate(currentId, true);
     startPolling();
   }
@@ -270,6 +278,7 @@
     await scanFolderRecursive(folderHandle);
     setFolderPickUi(false);
     updateLiveBadge();
+    setSearchEnabled(true);
     return true;
   }
 
@@ -845,8 +854,266 @@
   }
   // endregion
 
+  // region 搜索
+  const NAV_EXPANDED_KEY = "banira-nav-expanded";
+  const NAV_COLLAPSED_KEY_LEGACY = "banira-nav-collapsed";
+  const SIDEBAR_COLLAPSED_KEY = "banira-sidebar-collapsed";
+
+  function stripMarkdownForSearch(body) {
+    return body
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, "$1")
+      .replace(/[#>*_`|~-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function getDocSearchRecord(id) {
+    const nav = NAV_META[id];
+    const raw = liveCache[id];
+    if (!raw) {
+      const label = nav ? nav.label : id;
+      return { id, title: label, group: nav ? nav.group : "", text: label.toLowerCase(), bodyOnly: "" };
+    }
+    const { meta, body } = parseFrontmatter(raw);
+    const title = meta.title || (nav ? nav.label : id);
+    const bodyOnly = stripMarkdownForSearch(body).toLowerCase();
+    const text = (title + " " + bodyOnly).toLowerCase();
+    return { id, title, group: nav ? nav.group : "", text, bodyOnly };
+  }
+
+  function searchDocs(query) {
+    const q = query.trim().toLowerCase();
+    if (!q || needsFolderPick()) return [];
+    const terms = q.split(/\s+/).filter(Boolean);
+    const ids = new Set([...ALL_IDS, ...Object.keys(liveCache)]);
+    const scored = [];
+    ids.forEach((id) => {
+      if (!DOC_PATHS[id] && !liveCache[id]) return;
+      const rec = getDocSearchRecord(id);
+      const titleLower = rec.title.toLowerCase();
+      const labelLower = (NAV_META[id] ? NAV_META[id].label : "").toLowerCase();
+      if (!terms.every((t) => rec.text.includes(t) || id.toLowerCase().includes(t))) return;
+      let score = 0;
+      terms.forEach((t) => {
+        if (titleLower.includes(t)) score += 100;
+        if (labelLower.includes(t)) score += 80;
+        if (id.toLowerCase().includes(t)) score += 60;
+        if (rec.bodyOnly.includes(t)) score += 10;
+      });
+      scored.push({ ...rec, score });
+    });
+    scored.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, "zh"));
+    return scored.slice(0, 16);
+  }
+
+  function makeSearchSnippet(bodyOnly, query) {
+    const q = query.trim().toLowerCase();
+    if (!q || !bodyOnly) return "";
+    const idx = bodyOnly.indexOf(q);
+    if (idx < 0) {
+      const term = q.split(/\s+/).find((t) => bodyOnly.includes(t));
+      if (!term) return bodyOnly.slice(0, 72) + (bodyOnly.length > 72 ? "…" : "");
+      const i = bodyOnly.indexOf(term);
+      return excerptAround(bodyOnly, i, term.length);
+    }
+    return excerptAround(bodyOnly, idx, q.length);
+  }
+
+  function excerptAround(text, index, len) {
+    const start = Math.max(0, index - 28);
+    const end = Math.min(text.length, index + len + 40);
+    let slice = text.slice(start, end);
+    if (start > 0) slice = "…" + slice;
+    if (end < text.length) slice += "…";
+    return slice;
+  }
+
+  function setSearchEnabled(enabled) {
+    const input = document.getElementById("doc-search");
+    if (!input) return;
+    input.disabled = !enabled;
+    input.placeholder = enabled ? "搜索设定…" : "连接后可搜索";
+    if (!enabled) {
+      input.value = "";
+      hideSearchResults();
+    }
+  }
+
+  function hideSearchResults() {
+    const panel = document.getElementById("search-results");
+    const input = document.getElementById("doc-search");
+    if (panel) panel.hidden = true;
+    if (input) input.setAttribute("aria-expanded", "false");
+  }
+
+  function renderSearchResults(results, query) {
+    const panel = document.getElementById("search-results");
+    const input = document.getElementById("doc-search");
+    if (!panel || !input) return;
+    if (!results.length) {
+      panel.innerHTML = '<div class="search-results-empty">无匹配结果</div>';
+      panel.hidden = false;
+      input.setAttribute("aria-expanded", "true");
+      return;
+    }
+    panel.innerHTML = results
+      .map((r) => {
+        const snippet = makeSearchSnippet(r.bodyOnly, query);
+        const meta = r.group ? '<span class="search-result-group">' + escapeHtml(r.group) + "</span>" : "";
+        const sn = snippet
+          ? '<span class="search-result-snippet">' + escapeHtml(snippet) + "</span>"
+          : "";
+        return (
+          '<button type="button" class="search-result-item" role="option" data-id="' +
+          escapeHtml(r.id) +
+          '">' +
+          '<span class="search-result-title">' +
+          escapeHtml(r.title) +
+          "</span>" +
+          meta +
+          sn +
+          "</button>"
+        );
+      })
+      .join("");
+    panel.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    panel.querySelectorAll(".search-result-item").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        hideSearchResults();
+        input.value = "";
+        navigate(id);
+      });
+    });
+  }
+
+  function setupSearch() {
+    const input = document.getElementById("doc-search");
+    const panel = document.getElementById("search-results");
+    if (!input || !panel) return;
+    let debounceTimer = null;
+    const run = () => {
+      const q = input.value;
+      if (!q.trim()) {
+        hideSearchResults();
+        return;
+      }
+      renderSearchResults(searchDocs(q), q);
+    };
+    input.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(run, 180);
+    });
+    input.addEventListener("focus", () => {
+      if (input.value.trim()) run();
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        hideSearchResults();
+        input.blur();
+      }
+    });
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".toolbar-search-wrap")) hideSearchResults();
+    });
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        if (!input.disabled) input.focus();
+      }
+    });
+  }
+  // endregion
+
+  // region 侧栏折叠
+  function loadNavExpandedGroups() {
+    try {
+      const legacy = localStorage.getItem(NAV_COLLAPSED_KEY_LEGACY);
+      if (legacy) {
+        const collapsed = JSON.parse(legacy);
+        const expanded = {};
+        NAV.forEach((section) => {
+          if (!collapsed[section.group]) expanded[section.group] = true;
+        });
+        localStorage.setItem(NAV_EXPANDED_KEY, JSON.stringify(expanded));
+        localStorage.removeItem(NAV_COLLAPSED_KEY_LEGACY);
+        return expanded;
+      }
+      const raw = localStorage.getItem(NAV_EXPANDED_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveNavExpandedGroups(map) {
+    try {
+      localStorage.setItem(NAV_EXPANDED_KEY, JSON.stringify(map));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function setNavGroupExpanded(groupName, expanded) {
+    const groupEl = document.querySelector('.nav-group[data-group="' + groupName + '"]');
+    if (!groupEl) return;
+    const titleEl = groupEl.querySelector(".nav-group-title");
+    groupEl.classList.toggle("nav-group--collapsed", !expanded);
+    if (titleEl) titleEl.setAttribute("aria-expanded", expanded ? "true" : "false");
+  }
+
+  function persistNavGroupExpanded(groupName, expanded) {
+    const map = loadNavExpandedGroups();
+    if (expanded) map[groupName] = true;
+    else delete map[groupName];
+    saveNavExpandedGroups(map);
+  }
+
+  function toggleNavGroup(groupName, groupEl, titleEl) {
+    const expanded = groupEl.classList.toggle("nav-group--collapsed") === false;
+    titleEl.setAttribute("aria-expanded", expanded ? "true" : "false");
+    persistNavGroupExpanded(groupName, expanded);
+  }
+
+  function ensureNavGroupVisibleForDoc(id) {
+    const meta = NAV_META[id];
+    if (!meta) return;
+    const map = loadNavExpandedGroups();
+    if (!map[meta.group]) {
+      map[meta.group] = true;
+      saveNavExpandedGroups(map);
+    }
+    setNavGroupExpanded(meta.group, true);
+  }
+
+  function setupSidebarCollapse() {
+    const collapseBtn = document.getElementById("sidebar-collapse-btn");
+    const expandBtn = document.getElementById("sidebar-expand-btn");
+    const apply = (collapsed) => {
+      document.body.classList.toggle("sidebar-collapsed", collapsed);
+      if (collapseBtn) collapseBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      if (expandBtn) expandBtn.hidden = !collapsed;
+    };
+    apply(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+    collapseBtn?.addEventListener("click", () => {
+      const collapsed = true;
+      apply(collapsed);
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, "1");
+    });
+    expandBtn?.addEventListener("click", () => {
+      apply(false);
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, "0");
+      document.getElementById("sidebar")?.classList.remove("open");
+    });
+  }
+  // endregion
+
   // region 路由与 UI
   function setActiveNav(id) {
+    ensureNavGroupVisibleForDoc(id);
     document.querySelectorAll(".nav-item").forEach((btn) => {
       btn.classList.toggle("active", btn.getAttribute("data-id") === id);
     });
@@ -879,13 +1146,32 @@
 
   function buildSidebar() {
     const container = document.getElementById("nav-root");
+    const expandedGroups = loadNavExpandedGroups();
     NAV.forEach((section) => {
       const g = document.createElement("div");
       g.className = "nav-group";
-      const t = document.createElement("div");
+      g.setAttribute("data-group", section.group);
+      const expanded = Boolean(expandedGroups[section.group]);
+      if (!expanded) g.classList.add("nav-group--collapsed");
+
+      const t = document.createElement("button");
+      t.type = "button";
       t.className = "nav-group-title";
-      t.textContent = section.group;
+      t.setAttribute("aria-expanded", expanded ? "true" : "false");
+      const label = document.createElement("span");
+      label.className = "nav-group-label";
+      label.textContent = section.group;
+      const chevron = document.createElement("span");
+      chevron.className = "nav-group-chevron";
+      chevron.setAttribute("aria-hidden", "true");
+      t.append(label, chevron);
+      t.addEventListener("click", () => toggleNavGroup(section.group, g, t));
       g.appendChild(t);
+
+      const body = document.createElement("div");
+      body.className = "nav-group-body";
+      const inner = document.createElement("div");
+      inner.className = "nav-group-body-inner";
       section.items.forEach((item) => {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -893,8 +1179,10 @@
         btn.setAttribute("data-id", item.id);
         btn.textContent = item.label;
         btn.addEventListener("click", () => navigate(item.id));
-        g.appendChild(btn);
+        inner.appendChild(btn);
       });
+      body.appendChild(inner);
+      g.appendChild(body);
       container.appendChild(g);
     });
   }
@@ -914,14 +1202,18 @@
 
   async function init() {
     buildSidebar();
+    setupSearch();
+    setupSidebarCollapse();
     document.getElementById("menu-toggle").addEventListener("click", () => {
       document.getElementById("sidebar").classList.toggle("open");
     });
     const httpOk = location.protocol === "http:" || location.protocol === "https:";
     if (httpOk) {
       const ok = await tryEnableFetchLive();
-      if (ok) await preloadLiveDocs();
-      else showFetchFailedHint();
+      if (ok) {
+        await preloadLiveDocs();
+        setSearchEnabled(true);
+      } else showFetchFailedHint();
     } else if (isFileProtocol()) {
       const restored = await tryRestoreFolderFromStorage();
       if (restored) {
