@@ -2,13 +2,6 @@
 
 > 协作用浓缩记忆。详细设定见 `content/`；浏览器打开 `index.html` 浏览。
 
-## 茶系文件 slug
-
-| 中文 | slug |
-|------|------|
-| 红茶 | `vanilla-black-tea`（英文 black tea，勿用 red） |
-| 黑茶 | `vanilla-dark-tea`（勿用 black 指黑茶） |
-
 ## 品牌与称呼
 
 | 项    | 内容                    |

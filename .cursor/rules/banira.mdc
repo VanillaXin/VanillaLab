@@ -9,7 +9,7 @@ globs:
 
 # Banira 设定库
 
-- 设定正文使用 `content/**/*.banira`；格式与预览见 `content/guide.banira`
-- 茶系 slug：**红茶** = `vanilla-black-tea`，**黑茶** = `vanilla-dark-tea`
+- 设定正文使用 `content/**/*.banira`；格式见 `content/guide.banira`
 - 文内链接：`[[doc-id|标签]]`，id 与 frontmatter `id:` 及 `assets/app.js` 导航一致
+- 茶系角色文件名：`vanilla-black-tea`（红茶）、`vanilla-dark-tea`（黑茶）、`vanilla-oolong-tea`（青茶）等
 - 方法分区注释：`// region 描述` / `// endregion 描述`

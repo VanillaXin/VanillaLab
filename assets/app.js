@@ -308,34 +308,303 @@
     return s;
   }
 
+  function parsePedigreeFields(text) {
+    const parts = text.split("|").map((p) => p.trim());
+    return {
+      name: parts[0] || "",
+      sub: parts[1] || "",
+      id: parts[2] || "",
+      children: [],
+    };
+  }
+
+  function parsePedigreeLineRaw(line) {
+    const m = line.match(/^(\s*)(?:[-*]\s+)?(.+)$/);
+    const spaces = m ? m[1].length : 0;
+    const depth = Math.floor(spaces / 2);
+    let content = (m ? m[2] : line).trim();
+    content = content.replace(/^[@#]\s*/, "");
+    return { depth, node: parsePedigreeFields(content) };
+  }
+
+  function buildPedigreeTree(rawLines) {
+    const parsed = rawLines.filter((l) => l.trim()).map(parsePedigreeLineRaw);
+    if (!parsed.length) return [];
+
+    const maxDepth = Math.max.apply(
+      null,
+      parsed.map((p) => p.depth)
+    );
+
+    if (maxDepth === 0 && parsed.length > 1) {
+      const root = Object.assign({}, parsed[0].node, { children: [] });
+      parsed.slice(1).forEach((p) => {
+        root.children.push(Object.assign({}, p.node, { children: [] }));
+      });
+      return [root];
+    }
+
+    const forest = [];
+    const stack = [];
+
+    parsed.forEach(({ depth, node }) => {
+      const n = Object.assign({}, node, { children: [] });
+      while (stack.length > depth) stack.pop();
+      if (depth === 0) {
+        forest.push(n);
+        stack[0] = n;
+      } else {
+        const parent = stack[depth - 1];
+        if (parent) {
+          parent.children.push(n);
+          stack[depth] = n;
+        } else {
+          forest.push(n);
+          stack[0] = n;
+        }
+      }
+    });
+
+    return forest;
+  }
+
+  function buildPedigreeForest(rawLines) {
+    const chunks = [];
+    let chunk = [];
+    rawLines.forEach((line) => {
+      if (!line.trim()) {
+        if (chunk.length) {
+          chunks.push(chunk);
+          chunk = [];
+        }
+      } else {
+        chunk.push(line);
+      }
+    });
+    if (chunk.length) chunks.push(chunk);
+    if (!chunks.length) return [];
+    return chunks.reduce((all, c) => all.concat(buildPedigreeTree(c)), []);
+  }
+
+  const PEDIGREE_LAYOUT = {
+    padX: 28,
+    padY: 20,
+    gapX: 18,
+    rowGap: 88,
+    boxH: 62,
+    minBoxW: 92,
+    maxBoxW: 132,
+    rootMinW: 108,
+    treeGap: 48,
+  };
+
+  function pedigreeBoxWidth(node, isRoot) {
+    const len = (node.name || "").length + ((node.sub || "").length >> 1);
+    const w = Math.max(PEDIGREE_LAYOUT.minBoxW, Math.min(PEDIGREE_LAYOUT.maxBoxW, len * 15 + 36));
+    return isRoot ? Math.max(w, PEDIGREE_LAYOUT.rootMinW) : w;
+  }
+
+  function measurePedigreeWidth(node, isRoot) {
+    if (!node.children || !node.children.length) {
+      node._boxW = pedigreeBoxWidth(node, isRoot);
+      node._subW = node._boxW;
+      return node._subW;
+    }
+    let sum = 0;
+    node.children.forEach((ch, i) => {
+      sum += measurePedigreeWidth(ch, false) + (i > 0 ? PEDIGREE_LAYOUT.gapX : 0);
+    });
+    node._subW = sum;
+    node._boxW = pedigreeBoxWidth(node, isRoot);
+    return sum;
+  }
+
+  function assignPedigreeX(node, left, depth) {
+    node._depth = depth;
+    node._y = PEDIGREE_LAYOUT.padY + depth * PEDIGREE_LAYOUT.rowGap;
+    if (!node.children || !node.children.length) {
+      node._x = left + node._boxW / 2;
+      return left + node._boxW + PEDIGREE_LAYOUT.gapX;
+    }
+    let cursor = left;
+    node.children.forEach((ch) => {
+      cursor = assignPedigreeX(ch, cursor, depth + 1);
+    });
+    const first = node.children[0]._x;
+    const last = node.children[node.children.length - 1]._x;
+    node._x = (first + last) / 2;
+    return cursor;
+  }
+
+  function collectPedigreeNodes(node, list) {
+    list.push(node);
+    if (node.children) node.children.forEach((ch) => collectPedigreeNodes(ch, list));
+  }
+
+  function pedigreeLinkPaths(node) {
+    const paths = [];
+    if (!node.children || !node.children.length) return paths;
+    const top = node._y + PEDIGREE_LAYOUT.boxH;
+    const childY = node.children[0]._y;
+    const midY = top + (childY - top) * 0.45;
+    const px = node._x;
+    if (node.children.length === 1) {
+      const ch = node.children[0];
+      paths.push("M" + px + " " + top + " V" + ch._y);
+    } else {
+      paths.push("M" + px + " " + top + " V" + midY);
+      const x1 = node.children[0]._x;
+      const x2 = node.children[node.children.length - 1]._x;
+      paths.push("M" + x1 + " " + midY + " H" + x2);
+      node.children.forEach((ch) => {
+        paths.push("M" + ch._x + " " + midY + " V" + ch._y);
+      });
+    }
+    node.children.forEach((ch) => {
+      paths.push.apply(paths, pedigreeLinkPaths(ch));
+    });
+    return paths;
+  }
+
+  function pedigreeNodeFo(node, isRoot) {
+    const w = node._boxW;
+    const h = PEDIGREE_LAYOUT.boxH;
+    const x = node._x - w / 2;
+    const y = node._y;
+    const gCls = "pedigree-node" + (isRoot ? " pedigree-node--root" : "");
+    const innerCls = "pedigree__node" + (node.id ? " wiki-link" : "");
+    const title = escapeHtml(node.name);
+    const sub = node.sub ? '<span class="pedigree__sub">' + escapeHtml(node.sub) + "</span>" : "";
+    const label = node.id
+      ? '<a href="#" class="' +
+        innerCls +
+        '" data-id="' +
+        escapeHtml(node.id) +
+        '"><span class="pedigree__name">' +
+        title +
+        "</span>" +
+        sub +
+        "</a>"
+      : '<div class="' +
+        innerCls +
+        '"><span class="pedigree__name">' +
+        title +
+        "</span>" +
+        sub +
+        "</div>";
+    let g = '<g class="' + gCls + '">';
+    g +=
+      '<rect class="pedigree-svg__box" x="' +
+      x +
+      '" y="' +
+      y +
+      '" width="' +
+      w +
+      '" height="' +
+      h +
+      '" rx="10" ry="10" />';
+    g +=
+      '<foreignObject overflow="visible" x="' +
+      x +
+      '" y="' +
+      y +
+      '" width="' +
+      w +
+      '" height="' +
+      h +
+      '"><div xmlns="http://www.w3.org/1999/xhtml" class="pedigree-fo">' +
+      label +
+      "</div></foreignObject>";
+    g += "</g>";
+    return g;
+  }
+
+  function renderPedigreeSvgTree(root, isRoot) {
+    measurePedigreeWidth(root, isRoot);
+    assignPedigreeX(root, PEDIGREE_LAYOUT.padX, 0);
+    const nodes = [];
+    collectPedigreeNodes(root, nodes);
+    const paths = pedigreeLinkPaths(root);
+    let maxX = PEDIGREE_LAYOUT.padX;
+    nodes.forEach((n) => {
+      const right = n._x + n._boxW / 2;
+      if (right > maxX) maxX = right;
+    });
+    const w = Math.ceil(maxX + PEDIGREE_LAYOUT.padX);
+    let maxDepth = 0;
+    nodes.forEach((n) => {
+      if (n._depth > maxDepth) maxDepth = n._depth;
+    });
+    const h2 = Math.ceil(
+      PEDIGREE_LAYOUT.padY + maxDepth * PEDIGREE_LAYOUT.rowGap + PEDIGREE_LAYOUT.boxH + PEDIGREE_LAYOUT.padY
+    );
+
+    let svg = '<svg class="pedigree-svg" viewBox="0 0 ' + w + " " + h2 + '" width="' + w + '" height="' + h2 + '" role="img">';
+    paths.forEach((d) => {
+      svg += '<path class="pedigree-svg__link" d="' + d + '" fill="none" />';
+    });
+    nodes.forEach((n) => {
+      svg += pedigreeNodeFo(n, n === root);
+    });
+    svg += "</svg>";
+    return { svg, w, h: h2 };
+  }
+
+  function renderPedigree(rawLines) {
+    const forest = buildPedigreeForest(rawLines);
+    if (!forest.length) return "";
+    let html = '<figure class="pedigree">';
+    forest.forEach((root, idx) => {
+      const tree = renderPedigreeSvgTree(root, true);
+      html += '<div class="pedigree-svg-wrap">' + tree.svg + "</div>";
+      if (idx < forest.length - 1) {
+        html += '<div class="pedigree__split" aria-hidden="true"></div>';
+      }
+    });
+    html += "</figure>";
+    return html;
+  }
+
   function renderBody(body) {
     const lines = body.replace(/\r\n/g, "\n").split("\n");
     const out = [];
     let i = 0;
-    let inPre = false;
-    let preBuf = [];
+    let inFence = false;
+    let fenceKind = "";
+    let fenceBuf = [];
 
-    function flushPre() {
-      if (preBuf.length) {
-        out.push("<pre><code>" + escapeHtml(preBuf.join("\n")) + "</code></pre>");
-        preBuf = [];
+    function flushFence() {
+      if (!fenceBuf.length) {
+        fenceKind = "";
+        return;
       }
+      if (fenceKind === "pedigree") {
+        out.push(renderPedigree(fenceBuf));
+      } else {
+        out.push("<pre><code>" + escapeHtml(fenceBuf.join("\n")) + "</code></pre>");
+      }
+      fenceBuf = [];
+      fenceKind = "";
     }
 
     while (i < lines.length) {
       const line = lines[i];
+      const fenceMatch = line.trim().match(/^```(\w*)/);
 
-      if (line.trim().startsWith("```")) {
-        if (inPre) {
-          flushPre();
-          inPre = false;
-        } else inPre = true;
+      if (fenceMatch) {
+        if (inFence) {
+          flushFence();
+          inFence = false;
+        } else {
+          inFence = true;
+          fenceKind = fenceMatch[1] || "code";
+        }
         i++;
         continue;
       }
 
-      if (inPre) {
-        preBuf.push(line);
+      if (inFence) {
+        fenceBuf.push(line);
         i++;
         continue;
       }
@@ -420,7 +689,7 @@
       i++;
     }
 
-    flushPre();
+    flushFence();
     return out.join("\n");
   }
 
