@@ -24,6 +24,7 @@
   function applyTheme() {
     document.documentElement.setAttribute("data-season", getSeason());
     document.documentElement.setAttribute("data-night-mode", getNightMode());
+    document.dispatchEvent(new CustomEvent("banira-theme-change"));
   }
 
   function setSeason(id) {

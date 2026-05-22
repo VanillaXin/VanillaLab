@@ -716,7 +716,9 @@
   function renderPedigree(rawLines) {
     const forest = buildPedigreeForest(rawLines);
     if (!forest.length) return "";
-    let html = '<figure class="pedigree">';
+    let html =
+      '<figure class="diagram-preview pedigree" tabindex="0" role="button" aria-label="谱系图，点击查看大图">' +
+      '<div class="diagram-preview__body">';
     forest.forEach((root, idx) => {
       const tree = renderPedigreeSvgTree(root, true);
       html += '<div class="pedigree-svg-wrap">' + tree.svg + "</div>";
@@ -724,9 +726,445 @@
         html += '<div class="pedigree__split" aria-hidden="true"></div>';
       }
     });
-    html += "</figure>";
+    html += '</div><p class="diagram-preview__hint">点击查看大图 · 可拖动缩放</p></figure>';
     return html;
   }
+
+  const MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js";
+  let mermaidLoadPromise = null;
+  let mermaidSeq = 0;
+
+  function renderMermaidPlaceholder(lines) {
+    const code = escapeHtml(lines.join("\n"));
+    return (
+      '<figure class="diagram-preview mermaid-figure">' +
+      '<textarea class="mermaid-src" hidden readonly>' +
+      code +
+      "</textarea>" +
+      '<div class="diagram-preview__body"><div class="mermaid-out" aria-busy="true">流程图加载中…</div></div>' +
+      '<p class="diagram-preview__hint">点击查看大图 · 可拖动缩放</p>' +
+      "</figure>"
+    );
+  }
+
+  function isDarkAppearance() {
+    const mode = document.documentElement.getAttribute("data-night-mode") || "auto";
+    if (mode === "dark") return true;
+    if (mode === "light") return false;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  function loadMermaidLib() {
+    if (window.mermaid) return Promise.resolve(window.mermaid);
+    if (mermaidLoadPromise) return mermaidLoadPromise;
+    mermaidLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = MERMAID_CDN;
+      script.async = true;
+      script.onload = () => resolve(window.mermaid);
+      script.onerror = () => reject(new Error("mermaid load failed"));
+      document.head.appendChild(script);
+    });
+    return mermaidLoadPromise;
+  }
+
+  function configureMermaid() {
+    const probe = document.getElementById("article") || document.documentElement;
+    const cs = getComputedStyle(probe);
+    const accent = cs.getPropertyValue("--accent").trim() || "#d4567a";
+    const accentSoft = cs.getPropertyValue("--accent-soft").trim() || "#ffe4ec";
+    const text = cs.getPropertyValue("--text").trim() || "#3d2a32";
+    const surface = cs.getPropertyValue("--surface").trim() || "#ffffff";
+    const border = cs.getPropertyValue("--border").trim() || "#e0e0e0";
+    const dark = isDarkAppearance();
+    window.mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "loose",
+      htmlLabels: false,
+      theme: "base",
+      themeVariables: {
+        darkMode: dark,
+        background: surface,
+        primaryColor: accentSoft,
+        primaryTextColor: text,
+        primaryBorderColor: accent,
+        secondaryColor: surface,
+        secondaryTextColor: text,
+        secondaryBorderColor: border,
+        tertiaryColor: surface,
+        lineColor: accent,
+        textColor: text,
+        mainBkg: accentSoft,
+        nodeBorder: accent,
+        clusterBkg: surface,
+        titleColor: text,
+        fontFamily: '"Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif',
+      },
+    });
+  }
+
+  async function renderMermaidDiagrams(root) {
+    const figures = root.querySelectorAll(".mermaid-figure");
+    if (!figures.length) return;
+    let lib;
+    try {
+      lib = await loadMermaidLib();
+    } catch {
+      figures.forEach((fig) => {
+        const src = fig.querySelector(".mermaid-src");
+        const out = fig.querySelector(".mermaid-out");
+        const code = src ? src.value : "";
+        out.removeAttribute("aria-busy");
+        out.innerHTML =
+          '<p class="mermaid-error">无法加载 Mermaid（需联网）。原文如下：</p><pre><code>' +
+          escapeHtml(code) +
+          "</code></pre>";
+      });
+      return;
+    }
+    configureMermaid();
+    for (const fig of figures) {
+      const srcEl = fig.querySelector(".mermaid-src");
+      const out = fig.querySelector(".mermaid-out");
+      if (!srcEl || !out) continue;
+      const source = srcEl.value.trim();
+      if (!source) {
+        out.textContent = "";
+        out.removeAttribute("aria-busy");
+        continue;
+      }
+      const renderId = "banira-mm-" + ++mermaidSeq;
+      try {
+        const { svg, bindFunctions } = await lib.render(renderId, source);
+        out.innerHTML = svg;
+        bindFunctions?.(out);
+        out.removeAttribute("aria-busy");
+      } catch (err) {
+        console.warn("mermaid render", err);
+        out.removeAttribute("aria-busy");
+        out.innerHTML =
+          '<p class="mermaid-error">流程图解析失败</p><pre><code>' + escapeHtml(source) + "</code></pre>";
+      }
+    }
+    bindDiagramPreviews(root);
+  }
+
+  // region 图表查看器
+  const diagramView = {
+    scale: 1,
+    tx: 0,
+    ty: 0,
+    baseW: 0,
+    baseH: 0,
+    dragging: false,
+    lastX: 0,
+    lastY: 0,
+  };
+
+  function getDiagramViewport() {
+    return document.getElementById("diagram-viewer-viewport");
+  }
+
+  function readSvgNaturalSize(svg) {
+    let bw = parseFloat(svg.getAttribute("width"));
+    let bh = parseFloat(svg.getAttribute("height"));
+    if ((!bw || !bh) && svg.viewBox && svg.viewBox.baseVal) {
+      const vb = svg.viewBox.baseVal;
+      if (vb.width > 0 && vb.height > 0) {
+        bw = vb.width;
+        bh = vb.height;
+      }
+    }
+    if (!bw || !bh) {
+      try {
+        const b = svg.getBBox();
+        if (b.width > 0 && b.height > 0) {
+          bw = b.width;
+          bh = b.height;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!bw || !bh) {
+      const r = svg.getBoundingClientRect();
+      bw = r.width;
+      bh = r.height;
+    }
+    return { w: bw || 0, h: bh || 0 };
+  }
+
+  function prepareDiagramSvgMetrics(root) {
+    const pad = 16;
+    root.querySelectorAll("svg").forEach((svg) => {
+      svg.style.maxWidth = "none";
+      svg.style.maxHeight = "none";
+      const natural = readSvgNaturalSize(svg);
+      let bw = natural.w;
+      let bh = natural.h;
+      if (bw > 0 && bh > 0) {
+        try {
+          const b = svg.getBBox();
+          if (b.width > 0 && b.height > 0) {
+            bw = Math.max(bw, b.width + pad);
+            bh = Math.max(bh, b.height + pad);
+          }
+        } catch {
+          bw += pad;
+          bh += pad;
+        }
+      } else {
+        bw = 480;
+        bh = 320;
+      }
+      svg.dataset.diagramBaseW = String(bw);
+      svg.dataset.diagramBaseH = String(bh);
+      svg.setAttribute("width", bw);
+      svg.setAttribute("height", bh);
+      svg.style.width = bw + "px";
+      svg.style.height = bh + "px";
+    });
+  }
+
+  function applyDiagramContentScale(viewport, scale) {
+    const s = scale > 0 ? scale : 1;
+    viewport.querySelectorAll("svg").forEach((svg) => {
+      const bw = parseFloat(svg.dataset.diagramBaseW);
+      const bh = parseFloat(svg.dataset.diagramBaseH);
+      if (!bw || !bh) return;
+      const w = bw * s;
+      const h = bh * s;
+      svg.setAttribute("width", w);
+      svg.setAttribute("height", h);
+      svg.style.width = w + "px";
+      svg.style.height = h + "px";
+    });
+  }
+
+  function measureDiagramContent(contentEl) {
+    const cRect = contentEl.getBoundingClientRect();
+    if (cRect.width > 20 && cRect.height > 20) {
+      return { w: Math.ceil(cRect.width) + 16, h: Math.ceil(cRect.height) + 16 };
+    }
+    let w = 0;
+    let h = 0;
+    let y = 0;
+    contentEl.querySelectorAll("svg").forEach((svg) => {
+      const bw = parseFloat(svg.dataset.diagramBaseW) || readSvgNaturalSize(svg).w;
+      const bh = parseFloat(svg.dataset.diagramBaseH) || readSvgNaturalSize(svg).h;
+      w = Math.max(w, bw);
+      h = Math.max(h, y + bh);
+      y += bh + 24;
+    });
+    return { w: Math.max(w, 120), h: Math.max(h, 80) };
+  }
+
+  function getDiagramDisplaySize() {
+    return {
+      w: diagramView.baseW * diagramView.scale,
+      h: diagramView.baseH * diagramView.scale,
+    };
+  }
+
+  function applyDiagramTransform() {
+    const viewport = getDiagramViewport();
+    const label = document.getElementById("diagram-zoom-label");
+    if (!viewport) return;
+    applyDiagramContentScale(viewport, diagramView.scale);
+    viewport.style.transform = "translate(" + diagramView.tx + "px," + diagramView.ty + "px)";
+    if (label) label.textContent = Math.round(diagramView.scale * 100) + "%";
+  }
+
+  function fitDiagramView() {
+    const stage = document.getElementById("diagram-viewer-stage");
+    const viewport = getDiagramViewport();
+    if (!stage || !viewport || !diagramView.baseW || !diagramView.baseH) return;
+    const pad = 48;
+    const sw = Math.max(stage.clientWidth - pad, 100);
+    const sh = Math.max(stage.clientHeight - pad, 100);
+    let scale = Math.min(sw / diagramView.baseW, sh / diagramView.baseH);
+    if (!isFinite(scale) || scale <= 0) scale = 1;
+    diagramView.scale = Math.min(scale, 1);
+    const { w, h } = getDiagramDisplaySize();
+    diagramView.tx = Math.max(pad / 2, (stage.clientWidth - w) / 2);
+    diagramView.ty = Math.max(pad / 2, (stage.clientHeight - h) / 2);
+    applyDiagramTransform();
+  }
+
+  function initDiagramViewerLayout(viewport, content) {
+    prepareDiagramSvgMetrics(viewport);
+    const base = measureDiagramContent(content);
+    diagramView.baseW = base.w;
+    diagramView.baseH = base.h;
+    content.style.width = base.w + "px";
+    content.style.height = base.h + "px";
+    diagramView.scale = 1;
+    diagramView.tx = 0;
+    diagramView.ty = 0;
+    fitDiagramView();
+  }
+
+  function scheduleDiagramFit(viewport, content) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => initDiagramViewerLayout(viewport, content));
+    });
+  }
+
+  function zoomDiagramViewAt(factor, originX, originY) {
+    const stage = document.getElementById("diagram-viewer-stage");
+    if (!stage) return;
+    const ox = originX != null ? originX : stage.clientWidth / 2;
+    const oy = originY != null ? originY : stage.clientHeight / 2;
+    const newScale = Math.min(6, Math.max(0.2, diagramView.scale * factor));
+    diagramView.tx = ox - ((ox - diagramView.tx) / diagramView.scale) * newScale;
+    diagramView.ty = oy - ((oy - diagramView.ty) / diagramView.scale) * newScale;
+    diagramView.scale = newScale;
+    applyDiagramTransform();
+  }
+
+  function zoomDiagramView(factor) {
+    zoomDiagramViewAt(factor, null, null);
+  }
+
+  function closeDiagramViewer() {
+    const modal = document.getElementById("diagram-viewer");
+    if (!modal) return;
+    modal.hidden = true;
+    document.body.classList.remove("diagram-viewer-open");
+    document.getElementById("diagram-viewer-canvas").innerHTML = "";
+    diagramView.baseW = 0;
+    diagramView.baseH = 0;
+  }
+
+  function openDiagramViewer(title, sourceFig) {
+    const body = sourceFig.querySelector(".diagram-preview__body");
+    if (!body) return;
+    if (!body.querySelector("svg")) return;
+    const modal = document.getElementById("diagram-viewer");
+    const canvas = document.getElementById("diagram-viewer-canvas");
+    const titleEl = document.getElementById("diagram-viewer-title");
+    if (!modal || !canvas) return;
+    canvas.innerHTML = "";
+    const viewport = document.createElement("div");
+    viewport.className = "diagram-viewer__viewport";
+    viewport.id = "diagram-viewer-viewport";
+    const content = document.createElement("div");
+    content.className = "diagram-viewer__content";
+    const clone = body.cloneNode(true);
+    clone.removeAttribute("class");
+    clone.style.cssText = "max-height:none;overflow:visible;pointer-events:auto;";
+    content.appendChild(clone);
+    viewport.appendChild(content);
+    canvas.appendChild(viewport);
+    clone.querySelectorAll(".wiki-link").forEach((a) => {
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeDiagramViewer();
+        navigate(a.getAttribute("data-id"));
+      });
+    });
+    if (titleEl) titleEl.textContent = title || "图表";
+    modal.hidden = false;
+    document.body.classList.add("diagram-viewer-open");
+    scheduleDiagramFit(viewport, content);
+  }
+
+  function bindDiagramPreviews(root) {
+    root.querySelectorAll(".diagram-preview").forEach((fig) => {
+      if (fig.dataset.viewerBound) return;
+      fig.dataset.viewerBound = "1";
+      const tryOpen = (e) => {
+        if (e && e.target.closest(".wiki-link")) return;
+        if (fig.classList.contains("mermaid-figure")) {
+          const busy = fig.querySelector(".mermaid-out[aria-busy='true']");
+          if (busy) return;
+        }
+        if (!fig.querySelector(".diagram-preview__body svg")) return;
+        const title = document.getElementById("page-title")?.textContent || "图表";
+        openDiagramViewer(title, fig);
+      };
+      fig.addEventListener("click", tryOpen);
+      fig.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          tryOpen(e);
+        }
+      });
+    });
+  }
+
+  function setupDiagramViewer() {
+    const modal = document.getElementById("diagram-viewer");
+    const stage = document.getElementById("diagram-viewer-stage");
+    if (!modal || !stage) return;
+
+    document.getElementById("diagram-viewer-close")?.addEventListener("click", closeDiagramViewer);
+    document.getElementById("diagram-viewer-backdrop")?.addEventListener("click", closeDiagramViewer);
+    document.getElementById("diagram-zoom-in")?.addEventListener("click", () => zoomDiagramView(1.2));
+    document.getElementById("diagram-zoom-out")?.addEventListener("click", () => zoomDiagramView(1 / 1.2));
+    document.getElementById("diagram-zoom-fit")?.addEventListener("click", fitDiagramView);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !modal.hidden) closeDiagramViewer();
+    });
+
+    stage.addEventListener(
+      "wheel",
+      (e) => {
+        if (modal.hidden) return;
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 0.92 : 1.08;
+        const rect = stage.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        zoomDiagramViewAt(factor, mx, my);
+      },
+      { passive: false }
+    );
+
+    stage.addEventListener("pointerdown", (e) => {
+      if (modal.hidden || e.button !== 0) return;
+      if (e.target.closest(".wiki-link")) return;
+      diagramView.dragging = true;
+      diagramView.lastX = e.clientX;
+      diagramView.lastY = e.clientY;
+      stage.setPointerCapture(e.pointerId);
+      stage.classList.add("is-dragging");
+    });
+
+    stage.addEventListener("pointermove", (e) => {
+      if (!diagramView.dragging) return;
+      diagramView.tx += e.clientX - diagramView.lastX;
+      diagramView.ty += e.clientY - diagramView.lastY;
+      diagramView.lastX = e.clientX;
+      diagramView.lastY = e.clientY;
+      applyDiagramTransform();
+    });
+
+    const endDrag = (e) => {
+      if (!diagramView.dragging) return;
+      diagramView.dragging = false;
+      stage.classList.remove("is-dragging");
+      try {
+        stage.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    };
+    stage.addEventListener("pointerup", endDrag);
+    stage.addEventListener("pointercancel", endDrag);
+
+    stage.addEventListener("dblclick", (e) => {
+      if (e.target.closest(".wiki-link")) return;
+      fitDiagramView();
+    });
+
+    window.addEventListener("resize", () => {
+      if (!modal.hidden && getDiagramViewport()) fitDiagramView();
+    });
+  }
+  // endregion
 
   function renderBody(body) {
     const lines = body.replace(/\r\n/g, "\n").split("\n");
@@ -743,6 +1181,8 @@
       }
       if (fenceKind === "pedigree") {
         out.push(renderPedigree(fenceBuf));
+      } else if (fenceKind === "mermaid") {
+        out.push(renderMermaidPlaceholder(fenceBuf));
       } else {
         out.push("<pre><code>" + escapeHtml(fenceBuf.join("\n")) + "</code></pre>");
       }
@@ -889,6 +1329,8 @@
         navigate(a.getAttribute("data-id"));
       });
     });
+    bindDiagramPreviews(article);
+    void renderMermaidDiagrams(article);
   }
   // endregion
 
@@ -1099,8 +1541,10 @@
     const groupEl = document.querySelector('.nav-group[data-group="' + groupName + '"]');
     if (!groupEl) return;
     const titleEl = groupEl.querySelector(".nav-group-title");
+    const chev = titleEl?.querySelector(".ui-chevron");
     groupEl.classList.toggle("nav-group--collapsed", !expanded);
     if (titleEl) titleEl.setAttribute("aria-expanded", expanded ? "true" : "false");
+    if (chev) chev.classList.toggle("ui-chevron--collapsed", !expanded);
   }
 
   function persistNavGroupExpanded(groupName, expanded) {
@@ -1113,6 +1557,8 @@
   function toggleNavGroup(groupName, groupEl, titleEl) {
     const expanded = groupEl.classList.toggle("nav-group--collapsed") === false;
     titleEl.setAttribute("aria-expanded", expanded ? "true" : "false");
+    const chev = titleEl.querySelector(".ui-chevron");
+    if (chev) chev.classList.toggle("ui-chevron--collapsed", !expanded);
     persistNavGroupExpanded(groupName, expanded);
   }
 
@@ -1200,7 +1646,7 @@
       label.className = "nav-group-label";
       label.textContent = section.group;
       const chevron = document.createElement("span");
-      chevron.className = "nav-group-chevron";
+      chevron.className = "ui-chevron" + (expanded ? "" : " ui-chevron--collapsed");
       chevron.setAttribute("aria-hidden", "true");
       t.append(label, chevron);
       t.addEventListener("click", () => toggleNavGroup(section.group, g, t));
@@ -1242,6 +1688,11 @@
     buildSidebar();
     setupSearch();
     setupSidebarCollapse();
+    setupDiagramViewer();
+    document.addEventListener("banira-theme-change", () => {
+      const article = document.getElementById("article");
+      if (article?.querySelector(".mermaid-figure")) void renderMermaidDiagrams(article);
+    });
     document.getElementById("menu-toggle").addEventListener("click", () => {
       document.getElementById("sidebar").classList.toggle("open");
     });

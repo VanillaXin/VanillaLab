@@ -25,7 +25,7 @@
             <h1>香草芯</h1>
             <p>Vanilla Xin · 设定库</p>
           </div>
-          <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-btn" aria-label="折叠侧栏" aria-expanded="true" title="折叠侧栏">‹</button>
+          <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-btn" aria-label="折叠侧栏" aria-expanded="true" title="折叠侧栏"><span class="ui-chevron ui-chevron--left" aria-hidden="true"></span></button>
         </div>
       </div>
       <nav class="nav-scroll" id="nav-root" aria-label="设定导航"></nav>
@@ -33,7 +33,7 @@
     <main class="main">
       <header class="toolbar">
         <div class="toolbar-start">
-          <button type="button" class="sidebar-expand-btn" id="sidebar-expand-btn" aria-label="展开侧栏" title="展开侧栏" hidden>›</button>
+          <button type="button" class="sidebar-expand-btn" id="sidebar-expand-btn" aria-label="展开侧栏" title="展开侧栏" hidden><span class="ui-chevron ui-chevron--right" aria-hidden="true"></span></button>
           <button type="button" class="menu-toggle" id="menu-toggle" aria-label="打开菜单">☰</button>
           <h2 id="page-title">加载中…</h2>
         </div>
@@ -71,6 +71,26 @@
           <button type="button" class="appearance-btn" data-night="dark">深色</button>
         </div>
       </section>
+    </div>
+  </div>
+
+  <div class="diagram-viewer" id="diagram-viewer" hidden>
+    <div class="diagram-viewer__backdrop" id="diagram-viewer-backdrop"></div>
+    <div class="diagram-viewer__panel" role="dialog" aria-modal="true" aria-labelledby="diagram-viewer-title">
+      <header class="diagram-viewer__header">
+        <h3 id="diagram-viewer-title">图表</h3>
+        <div class="diagram-viewer__tools">
+          <button type="button" class="diagram-viewer__tool" id="diagram-zoom-out" aria-label="缩小">−</button>
+          <span class="diagram-viewer__zoom" id="diagram-zoom-label">100%</span>
+          <button type="button" class="diagram-viewer__tool" id="diagram-zoom-in" aria-label="放大">+</button>
+          <button type="button" class="diagram-viewer__tool diagram-viewer__tool--text" id="diagram-zoom-fit" aria-label="适应窗口">适应</button>
+        </div>
+        <button type="button" class="diagram-viewer__close" id="diagram-viewer-close" aria-label="关闭">×</button>
+      </header>
+      <div class="diagram-viewer__stage" id="diagram-viewer-stage">
+        <div class="diagram-viewer__canvas" id="diagram-viewer-canvas"></div>
+      </div>
+      <p class="diagram-viewer__hint">拖动平移 · 滚轮缩放 · 双击重置</p>
     </div>
   </div>
 
