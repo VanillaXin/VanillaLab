@@ -21,19 +21,12 @@
       group: "世界观",
       items: [
         { id: "worldbuilding-overview", label: "总览" },
-        { id: "01-era", label: "源历" },
-        { id: "02-source-substance", label: "源质" },
-        { id: "03-derived-energy", label: "衍能与电力" },
-        { id: "04-magic-system", label: "魔法体系" },
-        { id: "05-androids", label: "仿生人" },
-        { id: "06-undercurrent", label: "暗流" },
-        { id: "07-vanilla-core-institute", label: "绿芯院区" },
-        { id: "08-vanilla-core-network", label: "总署与院所" },
+        { id: "world-history", label: "历史与共生" },
+        { id: "modern-magic", label: "现代魔法" },
+        { id: "plant-spirits", label: "植物精灵" },
+        { id: "vanilla-core", label: "香草芯" },
+        { id: "sakuragawa-campus", label: "桜川院区" },
       ],
-    },
-    {
-      group: "资料",
-      items: [{ id: "glossary", label: "术语表" }, { id: "timeline", label: "年表" }],
     },
     {
       group: "编写",
@@ -54,9 +47,10 @@
     if (id === "memory") return "content/memory.banira.md";
     if (id === "characters-index") return "content/characters/characters-index.banira.md";
     if (id === "worldbuilding-overview") return "content/worldbuilding/worldbuilding-overview.banira.md";
+    if (["world-history", "modern-magic", "plant-spirits", "vanilla-core", "sakuragawa-campus"].includes(id)) {
+      return "content/worldbuilding/" + id + ".banira.md";
+    }
     if (id.startsWith("vanilla-")) return "content/characters/" + id + ".banira.md";
-    if (/^\d{2}-/.test(id)) return "content/worldbuilding/" + id + ".banira.md";
-    if (id === "glossary" || id === "timeline") return "content/lore/" + id + ".banira.md";
     if (id === "guide") return "content/guide.banira.md";
     return null;
   }

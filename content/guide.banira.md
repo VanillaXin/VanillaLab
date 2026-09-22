@@ -11,7 +11,7 @@ group: meta
 1. **Frontmatter**（首尾 `---` 包裹）
     - `id`：必填，与导航路由一致
     - `title`：页面标题
-    - `group`：可选，`characters` / `worldbuilding` / `lore` / `meta`
+    - `group`：可选，`characters` / `worldbuilding` / `meta`
 
 2. **正文**（类 Markdown）
     - `##` / `###` 标题
@@ -20,47 +20,54 @@ group: meta
     - `> 引用`
     - `**粗体**`、`` `行内代码` ``
     - 围栏代码块 ` ``` `；`mermaid` 渲染流程图，`pedigree` 见下文
-    - 站内链接 `[[文档id]]` 或 `[[文档id|显示名]]`
+    - 站内链接使用双方括号包裹目标 `id`，可以附加自定义显示名
+
+## 站内链接
+
+链接目标使用目标页面 Frontmatter 中的 `id`：
+
+```markdown
+[[world-history]]
+[[sakuragawa-campus|桜川院区]]
+[[vanilla-progenitor|芯禾]]
+```
+
+修改页面文件名或目录时，需要同步更新 `assets/app.js` 中的导航路径。
 
 ## 谱系图 ` ```pedigree `
 
 每行格式：`名称|副标题或年龄|文档id`（后两项可省略；`id` 可点击跳转）。
 
-### 两层（简写）
+### 两层简写
 
-不写缩进时：**第一行**为根，其余各行视为其直接子节点（角色索引谱系即此写法）。
+不写缩进时，第一行为根，其余各行视为直接子节点：
 
 ```pedigree
-香草 · 芯酱|妈妈 · 实龄 52|vanilla-progenitor
-黑茶|实龄 ?|vanilla-dark-tea
-红茶|43|vanilla-black-tea
+芯禾 · 芯酱|家长 · 684 岁|vanilla-progenitor
+绯咲 · 红茶酱|272 岁|vanilla-black-tea
+秋音 · 青茶酱|232 岁|vanilla-oolong-tea
 ```
 
-### 多层（缩进）
+### 多层结构
 
-子节点比父节点多 **2 个空格**（可用 `- ` 列表符，可有可无）。子节点下还可继续缩进。
+子节点比父节点多 2 个空格，可选择添加 `- ` 列表符：
 
 ```pedigree
-香草 · 芯酱|妈妈 · 实龄 52|vanilla-progenitor
-  黑茶|实龄 ?|vanilla-dark-tea
-    某分支|备注|文档id
-  红茶|43|vanilla-black-tea
-  青茶|38|vanilla-oolong-tea
+芯禾 · 芯酱|家庭共同意义上的家长|vanilla-progenitor
+  咲夜 · 黑茶酱|年龄不详|vanilla-dark-tea
+  绯咲 · 红茶酱|最有大姐感|vanilla-black-tea
+    秋音 · 青茶酱|示例下级节点|vanilla-oolong-tea
 ```
 
 ### 多棵谱系
 
-顶层不缩进的行各自为一棵树的根；中间**空行**可分隔不同谱系。
+顶层不缩进的行各自形成一棵树，中间空行可分隔不同谱系。行首可选的 `@` 或 `#` 会在解析时去掉，并将该节点强调为根。
 
-```pedigree
-香草 · 芯酱|绿芯|vanilla-progenitor
-  黑茶|?|vanilla-dark-tea
+## 内容一致性
 
-另一体系|说明|某-id
-  下级|年龄|
-```
-
-行首 `@` 或 `#` 可选，表示强调为根节点，解析时会去掉。
+- 跨页面共用的姓名、生日、年龄与机构全称应以[[memory|设定速查]]为核对入口。
+- 共同世界规则优先写在世界观主题页，角色页通过站内链接引用。
+- 暂未确定的内容应明确保持未定，避免用旧版本设定填补。
 
 ## 预览方式
 
@@ -71,4 +78,4 @@ group: meta
 
 ## 主题
 
-右上角 **主题** 按钮：选择季节（春 / 夏 / 秋 / 冬）与外观（自动 / 浅色 / 深色）；选项保存在浏览器本地。
+右上角**主题**按钮可以选择季节（春 / 夏 / 秋 / 冬）与外观（自动 / 浅色 / 深色）；选项保存在浏览器本地。
