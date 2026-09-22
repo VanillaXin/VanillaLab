@@ -20,16 +20,16 @@ title: 世界观总览
 
 ## 设定模块索引
 
-| 文档                                                           | 主题               |
-|--------------------------------------------------------------|------------------|
-| [[01-era|01-era.md]]                                       | 源历、魔法史、社会面貌      |
-| [[02-source-substance|02-source-substance.md]]             | 源质               |
-| [[03-derived-energy|03-derived-energy.md]]                 | 衍能 → 电           |
-| [[04-magic-system|04-magic-system.md]]                     | 魔法学科与考试          |
-| [[05-androids|05-androids.md]]                             | AI 与半灵仿生人        |
-| [[06-undercurrent|06-undercurrent.md]]                     | 暗流               |
-| [[07-vanilla-core-institute|07-vanilla-core-institute.md]] | **绿芯院区**（主叙事研究所） |
-| [[08-vanilla-core-network|08-vanilla-core-network.md]]     | 总署与多院所体系         |
+| 文档                          | 主题                             |
+|-----------------------------|--------------------------------|
+| [[01-era                    | 01-era.md]]                    | 源历、魔法史、社会面貌      |
+| [[02-source-substance       | 02-source-substance.md]]       | 源质               |
+| [[03-derived-energy         | 03-derived-energy.md]]         | 衍能 → 电           |
+| [[04-magic-system           | 04-magic-system.md]]           | 魔法学科与考试          |
+| [[05-androids               | 05-androids.md]]               | AI 与半灵仿生人        |
+| [[06-undercurrent           | 06-undercurrent.md]]           | 暗流               |
+| [[07-vanilla-core-institute | 07-vanilla-core-institute.md]] | **绿芯院区**（主叙事研究所） |
+| [[08-vanilla-core-network   | 08-vanilla-core-network.md]]   | 总署与多院所体系         |
 
 ## 修订记录
 

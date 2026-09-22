@@ -50,14 +50,14 @@
   }
 
   function pathForId(id) {
-    if (id === "home") return "content/home.banira";
-    if (id === "memory") return "content/memory.banira";
-    if (id === "characters-index") return "content/characters/characters-index.banira";
-    if (id === "worldbuilding-overview") return "content/worldbuilding/worldbuilding-overview.banira";
-    if (id.startsWith("vanilla-")) return "content/characters/" + id + ".banira";
-    if (/^\d{2}-/.test(id)) return "content/worldbuilding/" + id + ".banira";
-    if (id === "glossary" || id === "timeline") return "content/lore/" + id + ".banira";
-    if (id === "guide") return "content/guide.banira";
+    if (id === "home") return "content/home.banira.md";
+    if (id === "memory") return "content/memory.banira.md";
+    if (id === "characters-index") return "content/characters/characters-index.banira.md";
+    if (id === "worldbuilding-overview") return "content/worldbuilding/worldbuilding-overview.banira.md";
+    if (id.startsWith("vanilla-")) return "content/characters/" + id + ".banira.md";
+    if (/^\d{2}-/.test(id)) return "content/worldbuilding/" + id + ".banira.md";
+    if (id === "glossary" || id === "timeline") return "content/lore/" + id + ".banira.md";
+    if (id === "guide") return "content/guide.banira.md";
     return null;
   }
 
@@ -157,10 +157,10 @@
 
   async function scanFolderRecursive(dirHandle) {
     for await (const entry of dirHandle.values()) {
-      if (entry.kind === "file" && entry.name.endsWith(".banira")) {
+      if (entry.kind === "file" && entry.name.endsWith(".banira.md")) {
         const file = await entry.getFile();
         const text = await file.text();
-        const id = parseIdFromRaw(text) || entry.name.replace(/\.banira$/, "");
+        const id = parseIdFromRaw(text) || entry.name.replace(/\.banira.md$/, "");
         liveCache[id] = text;
       } else if (entry.kind === "directory" && entry.name !== ".git") {
         await scanFolderRecursive(entry);
